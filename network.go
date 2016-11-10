@@ -41,7 +41,7 @@ func handleClientCommands(conn net.Conn) {
 	//b := bufio.NewReader(conn)
 	decoder := json.NewDecoder(conn) // maybe this works for json
 	for {
-		var msg TestData
+		var msg JsonCommand
 		err := decoder.Decode(&msg)
 		if err != nil { // EOF, or worse
             break

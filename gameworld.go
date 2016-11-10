@@ -5,6 +5,7 @@ type GameWorld struct {
 	monsters []GameEntity
 }
 
+
 func tickGameworld() {
 	updateClient()
 }

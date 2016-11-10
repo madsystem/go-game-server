@@ -14,7 +14,6 @@ func main() {
 		time.Sleep(40)
 		tickGameworld()
 	}
-
 }
 
 func checkError(err error) {
