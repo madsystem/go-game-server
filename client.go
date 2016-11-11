@@ -11,7 +11,7 @@ type Client struct {
 
 func (client *Client) Read() {
 	for {
-		line, error := client.reader.ReadString('\n')
+		line, error := client.reader.ReadString('\r')
         if error != nil {
             // todo close + remove client
             break

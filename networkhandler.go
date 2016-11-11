@@ -1,37 +1,43 @@
 package main
 
-import ("net")
+import (
+    "net"
+    "fmt"
+    )
 
 type NetworkHandler struct {
 	clients  []*Client
 	joins    chan net.Conn
-	incoming chan string
-	outgoing chan string
-}
-
-func (networkHandler *NetworkHandler) Broadcast(data string) {
-	for _, client := range networkHandler.clients {
-		client.chanOutAction <- data
-	}
+    gameWorld *GameWorld
 }
 
 func (networkHandler *NetworkHandler) Join(connection net.Conn) {
 	client := NewClient(connection)
+    gameEntity := NewGameEntity()
 
 	networkHandler.clients = append(networkHandler.clients, client)
+
 	go func() {
 		for {
-			networkHandler.incoming <- <- client.chanInAction
+            // distribut data / actions
+            gameEntity.chanInAction <- <- client.chanInAction
+            //client.chanOutAction <- <- gameEntity.chanOutAction
+            
 		}
 	}()
 }
 
 func (networkHandler *NetworkHandler) Listen() {
 	go func() {
+        listener,_ := net.Listen("tcp", ":4444")	
+        for{
+            conn, _ := listener.Accept()
+            networkHandler.joins <- conn
+        }
+	}()
+	go func() {
 		for {
 			select {
-			case data := <-networkHandler.incoming:
-				networkHandler.Broadcast(data)
 			case conn := <-networkHandler.joins:
 				networkHandler.Join(conn)
 			}
@@ -39,15 +45,18 @@ func (networkHandler *NetworkHandler) Listen() {
 	}()
 }
 
-func NewNetworkHandler() *NetworkHandler {
+func NewNetworkHandler(gameWorld *GameWorld) *NetworkHandler {
 	networkHandler := &NetworkHandler{
 		clients:  make([]*Client, 0),
 		joins:    make(chan net.Conn),
-		incoming: make(chan string),
-		outgoing: make(chan string),
+        gameWorld: gameWorld,
 	}
-
-	networkHandler.Listen()
+	
 
 	return networkHandler
+}
+
+func (networkHandler *NetworkHandler) Start(){
+	fmt.Println("Waiting for players ...")
+	networkHandler.Listen()
 }

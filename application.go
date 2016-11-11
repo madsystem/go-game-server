@@ -2,19 +2,16 @@ package main
 
 import (
 	"fmt"
-	"net"
 )
 
 func main() {
-	fmt.Println("Server started ...")
-	networkHandler := NewNetworkHandler()
+	gameWorld := NewGameWorld()
+	gameWorld.Start()
 
-	fmt.Println("Waiting for players ...")
-	listener,_ := net.Listen("tcp", ":4444")	
+	fmt.Println("Setting up server ...")
 
 	for{
-		conn, _ := listener.Accept()
-		networkHandler.joins <- conn
+
 	}
 }
 
