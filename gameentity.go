@@ -6,4 +6,6 @@ type GameEntity struct {
 	alive      bool
 	pos        [2]float32
 	vel        [2]float32
+
+	chanInAction chan string 
 }

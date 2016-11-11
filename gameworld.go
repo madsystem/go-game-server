@@ -1,19 +1,18 @@
 package main
 
+
+
 type GameWorld struct {
-	players  []GameEntity
-	monsters []GameEntity
+	gameEntities []*GameEntity 
 }
 
-
-func tickGameworld() {
-	updateClient()
+func NewGameWorld() *GameWorld {
+	newGameWorld := &GameWorld{
+		gameEntities:  make([]*GameEntity, 0),
+	}
+	return newGameWorld
 }
 
-func updateClient() {
-	// do some ai shit
-}
-
-func execGameEntityAction() {
-	// do some action shit
+func (gameWorld *GameWorld) AddGameEntity(gameEntity *GameEntity){
+	gameWorld.gameEntities = append(gameWorld.gameEntities, gameEntity)
 }
