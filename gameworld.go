@@ -37,7 +37,7 @@ func (gameWorld *GameWorld) Start() {
 
 func (gameWorld *GameWorld) UpdateClients() {
 	//fmt.Println(time.Now(), "Update World Start")
-	time.Sleep(40) // sleep 40 ms
+	time.Sleep(250) // sleep 40 ms
 	updateWorldCmd := NewUpdateWorldStateCmd(gameWorld.gameEntities)
 	jsonCmd, _ := json.Marshal(updateWorldCmd)
 	jsonOutString := string(jsonCmd) + "\r"

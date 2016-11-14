@@ -6,19 +6,20 @@ import (
 )
 
 type NetworkHandler struct {
-	clients   []*Client
-	joins     chan net.Conn
-	gameWorld *GameWorld
+	clients           []*Client
+	joins             chan net.Conn
+	gameWorld         *GameWorld
+	connectionCounter int32
 }
 
 func (networkHandler *NetworkHandler) Join(connection net.Conn) {
 	fmt.Println("Recv connection", connection)
-	client := NewClient(connection)
 
 	// create game entity and register it. not nice but works for now
-	gameEntity := NewGameEntity()
+	client := NewClient(connection)
+	networkHandler.connectionCounter++ // inc id
+	gameEntity := NewGameEntity(networkHandler.connectionCounter)
 	networkHandler.gameWorld.AddGameEntity(gameEntity)
-
 	networkHandler.clients = append(networkHandler.clients, client)
 
 	// setup distribution channels
@@ -56,9 +57,10 @@ func (networkHandler *NetworkHandler) Listen() {
 
 func NewNetworkHandler(gameWorld *GameWorld) *NetworkHandler {
 	networkHandler := &NetworkHandler{
-		clients:   make([]*Client, 0),
-		joins:     make(chan net.Conn),
-		gameWorld: gameWorld,
+		clients:           make([]*Client, 0),
+		joins:             make(chan net.Conn),
+		gameWorld:         gameWorld,
+		connectionCounter: 0,
 	}
 
 	return networkHandler
