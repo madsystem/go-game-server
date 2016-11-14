@@ -14,24 +14,29 @@ type NetworkHandler struct {
 
 func (networkHandler *NetworkHandler) Join(connection net.Conn) {
 	fmt.Println("Recv connection", connection)
+	id := networkHandler.connectionCounter
 
 	// create game entity and register it. not nice but works for now
-	client := NewClient(connection)
-	networkHandler.connectionCounter++ // inc id
-	gameEntity := NewGameEntity(networkHandler.connectionCounter)
+	client := NewClient(connection, id)
+	gameEntity := NewGameEntity(id)
 	networkHandler.gameWorld.AddGameEntity(gameEntity)
 	networkHandler.clients = append(networkHandler.clients, client)
+
+	networkHandler.connectionCounter++ // inc id
 
 	// setup distribution channels
 	go func() {
 		for {
 			select {
 			case inAction := <-client.chanInAction:
-				fmt.Println("Recv:", inAction)
+				fmt.Println("Action Recv:", inAction)
 				gameEntity.chanInAction <- inAction
 			case outAction := <-gameEntity.chanOutAction:
-				fmt.Println("Recv:", outAction)
+				fmt.Println("Action Send:", outAction)
 				client.chanOutAction <- outAction
+			case client := <-client.chanDisconnected:
+				networkHandler.gameWorld.RemoveGameEntity(client.id)
+				networkHandler.RemoveClient(client.id)
 			}
 		}
 	}()
@@ -69,4 +74,13 @@ func NewNetworkHandler(gameWorld *GameWorld) *NetworkHandler {
 func (networkHandler *NetworkHandler) Start() {
 	fmt.Println("Waiting for players ...")
 	networkHandler.Listen()
+}
+
+func (networkHandler *NetworkHandler) RemoveClient(id int32) {
+	for i, client := range networkHandler.clients {
+		if client.id == id {
+			networkHandler.clients = append(networkHandler.clients[:i], networkHandler.clients[i+1:]...)
+			break
+		}
+	}
 }

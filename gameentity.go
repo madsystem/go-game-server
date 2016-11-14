@@ -22,8 +22,8 @@ func NewGameEntity(id int32) *GameEntity {
 	//maxVelY := 5
 
 	newGameEntity := &GameEntity{
-		Pos: [2]float32{-mapSizeX/2 + rand.Float32()*mapSizeX/2,
-			-mapSizeY/2 + rand.Float32()*mapSizeY/2},
+		Pos: [2]float32{-mapSizeX/2 + rand.Float32()*mapSizeX,
+			-mapSizeY/2 + rand.Float32()*mapSizeY},
 		Vel:           [2]float32{0, 0},
 		Type:          0,
 		Id:            id,

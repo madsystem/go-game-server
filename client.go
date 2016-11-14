@@ -7,19 +7,21 @@ import (
 )
 
 type Client struct {
-	chanInAction  chan string
-	chanOutAction chan string
-	reader        *bufio.Reader
-	writer        *bufio.Writer
+	id               int32
+	chanInAction     chan string
+	chanOutAction    chan string
+	chanDisconnected chan *Client
+	reader           *bufio.Reader
+	writer           *bufio.Writer
 }
 
 func (client *Client) Read() {
 	for {
 		line, error := client.reader.ReadString('\r')
 		if error != nil {
-			// todo close + remove client
 			fmt.Println(error)
-			//break
+			client.chanDisconnected <- client
+			break
 		}
 		client.chanInAction <- line
 	}
@@ -27,11 +29,13 @@ func (client *Client) Read() {
 
 func (client *Client) Write() {
 	for {
-		_, error := client.writer.WriteString(<-client.chanOutAction)
+		jsonString := <-client.chanOutAction
+		_, error := client.writer.WriteString(jsonString)
 		if error != nil {
 			fmt.Println(error)
+			client.chanDisconnected <- client
 			// todo close + remove client
-			//break
+			break
 		}
 		client.writer.Flush()
 	}
@@ -42,15 +46,17 @@ func (client *Client) Listen() {
 	go client.Write()
 }
 
-func NewClient(connection net.Conn) *Client {
+func NewClient(connection net.Conn, _id int32) *Client {
 	writer := bufio.NewWriter(connection)
 	reader := bufio.NewReader(connection)
 
 	client := &Client{
-		chanInAction:  make(chan string),
-		chanOutAction: make(chan string),
-		reader:        reader,
-		writer:        writer,
+		chanInAction:     make(chan string),
+		chanOutAction:    make(chan string),
+		chanDisconnected: make(chan *Client),
+		id:               _id,
+		reader:           reader,
+		writer:           writer,
 	}
 
 	client.Listen()

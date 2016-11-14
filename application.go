@@ -6,9 +6,8 @@ import (
 
 func main() {
 	gameWorld := NewGameWorld()
-	gameWorld.Start()
-
 	fmt.Println("Setting up server ...")
+	gameWorld.Start()
 
 	for {
 		gameWorld.UpdateClients()

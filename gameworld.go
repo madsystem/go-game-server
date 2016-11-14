@@ -25,6 +25,15 @@ func (gameWorld *GameWorld) AddGameEntity(gameEntity *GameEntity) {
 	gameWorld.gameEntities = append(gameWorld.gameEntities, gameEntity)
 }
 
+func (gameWorld *GameWorld) RemoveGameEntity(id int32) {
+	for i, gameEntity := range gameWorld.gameEntities {
+		if gameEntity.Id == id {
+			gameWorld.gameEntities = append(gameWorld.gameEntities[:i], gameWorld.gameEntities[i+1:]...)
+			break
+		}
+	}
+}
+
 func (gameWorld *GameWorld) Start() {
 	fmt.Println("Server started ...")
 	newNetworkHandler := NewNetworkHandler(gameWorld)
@@ -43,9 +52,14 @@ func (gameWorld *GameWorld) UpdateClients() {
 	jsonOutString := string(jsonCmd) + "\r"
 
 	for index, gameEntity := range gameWorld.gameEntities {
-		fmt.Println(time.Now(), "Entity:", index, "OutString:", string(jsonOutString))
-		gameEntity.chanOutAction <- string(jsonOutString)
+		select {
+		case gameEntity.chanOutAction <- string(jsonOutString):
+			fmt.Println("Update Client:", time.Now(), "Entity:", index, "OutString:", string(jsonOutString))
+		default:
+			fmt.Println("Update Client:", time.Now(), "default called")
+		}
 	}
+
 	//fmt.Println(time.Now(), "Update World Done")
 
 }
