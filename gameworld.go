@@ -9,6 +9,8 @@ import (
 type GameWorld struct {
 	gameEntities   []*GameEntity
 	networkHandler *NetworkHandler
+
+	testChan chan string
 }
 
 func NewGameWorld() *GameWorld {
@@ -30,19 +32,20 @@ func (gameWorld *GameWorld) Start() {
 	newNetworkHandler.Start()
 
 	// update clients
-	go gameWorld.UpdateClients()
+	//go gameWorld.UpdateClients()
 }
 
 func (gameWorld *GameWorld) UpdateClients() {
-	for {
-		time.Sleep(40) // sleep 40 ms
-		updateWorldCmd := NewUpdateWorldStateCmd(gameWorld.gameEntities)
-		jsonCmd, _ := json.Marshal(updateWorldCmd)
-		jsonOutString := string(jsonCmd) + "\r"
+	//fmt.Println(time.Now(), "Update World Start")
+	time.Sleep(40) // sleep 40 ms
+	updateWorldCmd := NewUpdateWorldStateCmd(gameWorld.gameEntities)
+	jsonCmd, _ := json.Marshal(updateWorldCmd)
+	jsonOutString := string(jsonCmd) + "\r"
 
-		for index, gameEntity := range gameWorld.gameEntities {
-			fmt.Println(index, string(jsonOutString))
-			gameEntity.chanOutAction <- string(jsonOutString)
-		}
+	for index, gameEntity := range gameWorld.gameEntities {
+		fmt.Println(time.Now(), "Entity:", index, "OutString:", string(jsonOutString))
+		gameEntity.chanOutAction <- string(jsonOutString)
 	}
+	//fmt.Println(time.Now(), "Update World Done")
+
 }

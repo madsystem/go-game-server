@@ -10,8 +10,7 @@ func main() {
 
 	fmt.Println("Setting up server ...")
 
-	for{
-
+	for {
+		gameWorld.UpdateClients()
 	}
 }
-
