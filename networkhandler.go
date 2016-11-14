@@ -13,16 +13,22 @@ type NetworkHandler struct {
 
 func (networkHandler *NetworkHandler) Join(connection net.Conn) {
 	client := NewClient(connection)
+
+	// create game entity and register it. not nice but works for now 
     gameEntity := NewGameEntity()
+	networkHandler.gameWorld.AddGameEntity(gameEntity)
 
 	networkHandler.clients = append(networkHandler.clients, client)
 
+	// setup distribution channels
 	go func() {
 		for {
-            // distribut data / actions
-            gameEntity.chanInAction <- <- client.chanInAction
-            //client.chanOutAction <- <- gameEntity.chanOutAction
-            
+			select {
+				case inAction := <- client.chanInAction:
+					gameEntity.chanInAction <- inAction
+				case outAction := <- gameEntity.chanOutAction:
+	            	client.chanOutAction <- outAction
+			}
 		}
 	}()
 }
@@ -38,8 +44,8 @@ func (networkHandler *NetworkHandler) Listen() {
 	go func() {
 		for {
 			select {
-			case conn := <-networkHandler.joins:
-				networkHandler.Join(conn)
+				case conn := <-networkHandler.joins:
+					networkHandler.Join(conn)
 			}
 		}
 	}()
