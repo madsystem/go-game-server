@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -23,9 +24,14 @@ func NewGameWorld() *GameWorld {
 
 func (gameWorld *GameWorld) AddGameEntity(gameEntity *GameEntity) {
 	gameWorld.gameEntities = append(gameWorld.gameEntities, gameEntity)
+	// start entity loop
+	go gameEntity.UpdateEntity()
+
+	log.Println("AddGameEntity(): ", gameEntity, "Entity Count: ", len(gameWorld.gameEntities))
 }
 
 func (gameWorld *GameWorld) RemoveGameEntity(id int32) {
+	log.Println("RemoveGameEntity: ", id)
 	for i, gameEntity := range gameWorld.gameEntities {
 		if gameEntity.Id == id {
 			gameWorld.gameEntities = append(gameWorld.gameEntities[:i], gameWorld.gameEntities[i+1:]...)
@@ -41,22 +47,23 @@ func (gameWorld *GameWorld) Start() {
 	newNetworkHandler.Start()
 
 	// update clients
-	//go gameWorld.UpdateClients()
+	go gameWorld.UpdateClients()
 }
 
 func (gameWorld *GameWorld) UpdateClients() {
-	//fmt.Println(time.Now(), "Update World Start")
-	time.Sleep(250) // sleep 40 ms
-	updateWorldCmd := NewUpdateWorldStateCmd(gameWorld.gameEntities)
-	jsonCmd, _ := json.Marshal(updateWorldCmd)
-	jsonOutString := string(jsonCmd) + "\r"
+	for {
+		//fmt.Println(time.Now(), "Update World Start")
+		time.Sleep(40 * time.Millisecond) // sleep 40 ms
 
-	for index, gameEntity := range gameWorld.gameEntities {
-		select {
-		case gameEntity.chanOutAction <- string(jsonOutString):
-			fmt.Println("Update Client:", time.Now(), "Entity:", index, "OutString:", string(jsonOutString))
-		default:
-			fmt.Println("Update Client:", time.Now(), "default called")
+		updateWorldCmd := NewUpdateWorldStateCmd(gameWorld.gameEntities)
+		jsonCmd, _ := json.Marshal(updateWorldCmd)
+		jsonOutString := string(jsonCmd) + "\r"
+
+		for _, gameEntity := range gameWorld.gameEntities {
+
+			gameEntity.chanOutAction <- string(jsonOutString)
+
+			//fmt.Println("Update Client:", time.Now(), "Entity:", index, "OutString:", string(jsonOutString))
 		}
 	}
 

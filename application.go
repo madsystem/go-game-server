@@ -10,6 +10,6 @@ func main() {
 	gameWorld.Start()
 
 	for {
-		gameWorld.UpdateClients()
+		//gameWorld.UpdateClients()
 	}
 }

@@ -16,7 +16,7 @@ func (networkHandler *NetworkHandler) Join(connection net.Conn) {
 	fmt.Println("Recv connection", connection)
 	id := networkHandler.connectionCounter
 
-	// create game entity and register it. not nice but works for now
+	// create game entity and register it. not nice but works for now (create factory later)
 	client := NewClient(connection, id)
 	gameEntity := NewGameEntity(id)
 	networkHandler.gameWorld.AddGameEntity(gameEntity)
@@ -29,14 +29,22 @@ func (networkHandler *NetworkHandler) Join(connection net.Conn) {
 		for {
 			select {
 			case inAction := <-client.chanInAction:
-				fmt.Println("Action Recv:", inAction)
+				//fmt.Println("Action Recv:", inAction)
+				inAction = inAction[:len(inAction)-1]
 				gameEntity.chanInAction <- inAction
+
 			case outAction := <-gameEntity.chanOutAction:
-				fmt.Println("Action Send:", outAction)
-				client.chanOutAction <- outAction
+				//fmt.Println("Action Send:", outAction)
+				select {
+				case client.chanOutAction <- outAction:
+				default:
+				}
+
 			case client := <-client.chanDisconnected:
 				networkHandler.gameWorld.RemoveGameEntity(client.id)
 				networkHandler.RemoveClient(client.id)
+			default:
+
 			}
 		}
 	}()
