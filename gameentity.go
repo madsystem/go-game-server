@@ -46,7 +46,7 @@ func NewGameEntity(id int32, _chanInAction chan string, _chanOutAction chan stri
 
 func (gameEntity *GameEntity) UpdateEntity() {
 	for {
-		time.Sleep(1 * time.Millisecond)
+		time.Sleep(40 * time.Millisecond)
 		var posVec vec2.T = gameEntity.Pos
 		var targetPosVec vec2.T = gameEntity.TargetPos
 		toTarget := vec2.Sub(&targetPosVec, &posVec)
@@ -67,6 +67,7 @@ func (gameEntity *GameEntity) UpdateEntity() {
 
 func (gameEntity *GameEntity) Listen() {
 	for {
+		time.Sleep(40 * time.Millisecond)
 		select {
 		case incAction := <-gameEntity.chanInAction:
 			fmt.Println("Received command", incAction)

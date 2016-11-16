@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"time"
 )
 
 type NetworkHandler struct {
@@ -27,6 +28,7 @@ func (networkHandler *NetworkHandler) Join(connection net.Conn) {
 	// setup distribution channels
 	go func() {
 		for {
+			time.Sleep(40 * time.Millisecond)
 			select {
 			case client := <-client.chanDisconnected:
 				fmt.Println("Player Disconnected")
