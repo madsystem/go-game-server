@@ -24,7 +24,9 @@ func NewGameWorld() *GameWorld {
 
 func (gameWorld *GameWorld) AddGameEntity(gameEntity *GameEntity) {
 	gameWorld.gameEntities = append(gameWorld.gameEntities, gameEntity)
+
 	// start entity loop
+	go gameEntity.Listen()
 	go gameEntity.UpdateEntity()
 
 	log.Println("AddGameEntity(): ", gameEntity, "Entity Count: ", len(gameWorld.gameEntities))

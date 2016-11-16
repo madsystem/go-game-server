@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"math/rand"
 	"time"
@@ -23,7 +24,7 @@ type GameEntity struct {
 	chanOutAction chan string
 }
 
-func NewGameEntity(id int32) *GameEntity {
+func NewGameEntity(id int32, _chanInAction chan string, _chanOutAction chan string) *GameEntity {
 	var mapSizeX float32 = 100.0
 	var mapSizeY float32 = 100.0
 	//maxVelX := 5
@@ -37,10 +38,9 @@ func NewGameEntity(id int32) *GameEntity {
 		TargetPos:     [2]float32{0, 0},
 		maxSpeed:      8,
 		lastUpdate:    time.Now(),
-		chanInAction:  make(chan string),
-		chanOutAction: make(chan string),
+		chanInAction:  _chanInAction,
+		chanOutAction: _chanOutAction,
 	}
-	go newGameEntity.Listen()
 	return newGameEntity
 }
 
@@ -58,9 +58,10 @@ func (gameEntity *GameEntity) UpdateEntity() {
 			//log.Println("posVec", posVec, "targetPosVec", targetPosVec, "toTarget", toTarget, "elapsed", elapsed)
 			gameEntity.Pos[0] += toTarget[0] * gameEntity.maxSpeed * float32(elapsed)
 			gameEntity.Pos[1] += toTarget[1] * gameEntity.maxSpeed * float32(elapsed)
-			gameEntity.lastUpdate = time.Now()
 			//log.Println(gameEntity.Id, gameEntity.Pos)
 		}
+
+		gameEntity.lastUpdate = time.Now()
 	}
 }
 
@@ -68,7 +69,7 @@ func (gameEntity *GameEntity) Listen() {
 	for {
 		select {
 		case incAction := <-gameEntity.chanInAction:
-			//fmt.Println("Received command", incAction)
+			fmt.Println("Received command", incAction)
 
 			decoder := json.NewDecoder(strings.NewReader(incAction))
 

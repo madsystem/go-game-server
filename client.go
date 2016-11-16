@@ -33,7 +33,7 @@ func (client *Client) Write() {
 		_, error := client.writer.WriteString(jsonString)
 		if error != nil {
 			fmt.Println(error)
-			client.chanDisconnected <- client
+			//client.chanDisconnected <- client
 			// todo close + remove client
 			break
 		}
