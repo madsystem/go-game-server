@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 )
 
 func main() {
@@ -10,6 +11,7 @@ func main() {
 	gameWorld.Start()
 
 	for {
+		time.Sleep(40 * time.Millisecond)
 		//gameWorld.UpdateClients()
 	}
 }
