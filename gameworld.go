@@ -27,7 +27,7 @@ func (gameWorld *GameWorld) AddGameEntity(gameEntity *GameEntity) {
 
 	// start entity loop
 	go gameEntity.Listen()
-	go gameEntity.UpdateEntity()
+	//go gameEntity.UpdateEntity()
 
 	log.Println("AddGameEntity(): ", gameEntity, "Entity Count: ", len(gameWorld.gameEntities))
 }
@@ -49,26 +49,25 @@ func (gameWorld *GameWorld) Start() {
 	newNetworkHandler.Start()
 
 	// update clients
-	go gameWorld.UpdateClients()
+	go gameWorld.Update()
 }
 
-func (gameWorld *GameWorld) UpdateClients() {
+func (gameWorld *GameWorld) Update() {
 	for {
-		//fmt.Println(time.Now(), "Update World Start")
 		time.Sleep(40 * time.Millisecond) // sleep 40 ms
+
+		for _, gameEntity := range gameWorld.gameEntities {
+			gameEntity.UpdateEntity()
+		}
 
 		updateWorldCmd := NewUpdateWorldStateCmd(gameWorld.gameEntities)
 		jsonCmd, _ := json.Marshal(updateWorldCmd)
 		jsonOutString := string(jsonCmd) + "\r"
 
 		for _, gameEntity := range gameWorld.gameEntities {
-
 			gameEntity.chanOutAction <- string(jsonOutString)
-
 			//fmt.Println("Update Client:", time.Now(), "Entity:", index, "OutString:", string(jsonOutString))
 		}
 	}
-
-	//fmt.Println(time.Now(), "Update World Done")
 
 }

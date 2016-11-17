@@ -17,6 +17,10 @@ type ClientGotoCmd struct {
 	TargetPos [2]float32 `json:"pos"`
 }
 
+type ClientHandshake struct {
+	Id int32 `json:"id"`
+}
+
 func NewUpdateWorldStateCmd(gameEntities []*GameEntity) *UpdateWorldStateCmd {
 	newCmd := &UpdateWorldStateCmd{
 		Cmd:          "worldState",

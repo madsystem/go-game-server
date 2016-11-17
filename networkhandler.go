@@ -1,9 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
-	"time"
 )
 
 type NetworkHandler struct {
@@ -20,6 +20,10 @@ func (networkHandler *NetworkHandler) Join(connection net.Conn) {
 	// create game entity and register it. not nice but works for now (create factory later)
 	client := NewClient(connection, id)
 	gameEntity := NewGameEntity(id, client.chanInAction, client.chanOutAction)
+
+	// send handshake
+	networkHandler.SendHandshake(client)
+
 	networkHandler.gameWorld.AddGameEntity(gameEntity)
 	networkHandler.clients = append(networkHandler.clients, client)
 
@@ -28,18 +32,23 @@ func (networkHandler *NetworkHandler) Join(connection net.Conn) {
 	// setup distribution channels
 	go func() {
 		for {
-			time.Sleep(40 * time.Millisecond)
-			select {
-			case client := <-client.chanDisconnected:
-				fmt.Println("Player Disconnected")
-				networkHandler.gameWorld.RemoveGameEntity(client.id)
-				networkHandler.RemoveClient(client.id)
-			default:
-				continue // do we need this?
+			client := <-client.chanDisconnected
+			fmt.Println("Player Disconnected")
+			networkHandler.gameWorld.RemoveGameEntity(client.id)
+			networkHandler.RemoveClient(client.id)
 
-			}
 		}
 	}()
+}
+
+func (networkHandler *NetworkHandler) SendHandshake(client *Client) {
+	handshakeCmd := &ClientHandshake{
+		Id: client.id,
+	}
+	jsonCmd, _ := json.Marshal(handshakeCmd)
+	jsonOutString := string(jsonCmd) + "\r"
+
+	client.chanOutAction <- jsonOutString
 }
 
 func (networkHandler *NetworkHandler) Listen() {

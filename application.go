@@ -2,16 +2,16 @@ package main
 
 import (
 	"fmt"
-	"time"
+	"sync"
 )
 
 func main() {
+	var wg sync.WaitGroup
+	wg.Add(1)
+
 	gameWorld := NewGameWorld()
 	fmt.Println("Setting up server ...")
 	gameWorld.Start()
+	wg.Wait()
 
-	for {
-		time.Sleep(40 * time.Millisecond)
-		//gameWorld.UpdateClients()
-	}
 }
