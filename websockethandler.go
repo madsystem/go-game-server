@@ -65,7 +65,7 @@ func NewWebsocketHandler(gameWorld *GameWorld) *WebsocketHandler {
 
 func (handler *WebsocketHandler) Start() {
 	fmt.Println("Waiting for players ...")
-	handler.SetupWebSocket()
+	go handler.SetupWebSocket()
 
 }
 
@@ -90,7 +90,7 @@ func (handler *WebsocketHandler) SetupWebSocket() {
 	handler.upgrader.CheckOrigin = alwaysTrue
 	flag.Parse()
 	log.SetFlags(0)
-	var addr = flag.String("addr", ":80", "web socket port")
+	var addr = flag.String("addr", ":4446", "web socket port")
 
 	http.HandleFunc("/echo", handler.Join)
 	http.HandleFunc("/ws", handler.Join)
