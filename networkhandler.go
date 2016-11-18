@@ -7,27 +7,25 @@ import (
 )
 
 type NetworkHandler struct {
-	clients           []*Client
-	joins             chan net.Conn
-	gameWorld         *GameWorld
-	connectionCounter int32
+	clients   []*Client
+	joins     chan net.Conn
+	gameWorld *GameWorld
 }
 
 func (networkHandler *NetworkHandler) Join(connection net.Conn) {
 	fmt.Println("Recv connection", connection)
-	id := networkHandler.connectionCounter
 
 	// create game entity and register it. not nice but works for now (create factory later)
+	id := networkHandler.gameWorld.FetchNewEntityId()
 	client := NewClient(connection, id)
-	gameEntity := NewGameEntity(id, client.chanInAction, client.chanOutAction)
+	gameEntity := NewGameEntity(id, client.chanInAction, client.chanOutAction, networkHandler.gameWorld.chanAttack, 0)
 
 	// send handshake
 	networkHandler.SendHandshake(client)
 
+	// add
 	networkHandler.gameWorld.AddGameEntity(gameEntity)
 	networkHandler.clients = append(networkHandler.clients, client)
-
-	networkHandler.connectionCounter++ // inc id
 
 	// setup distribution channels
 	go func() {
@@ -36,13 +34,12 @@ func (networkHandler *NetworkHandler) Join(connection net.Conn) {
 			fmt.Println("Player Disconnected")
 			networkHandler.gameWorld.RemoveGameEntity(client.id)
 			networkHandler.RemoveClient(client.id)
-
 		}
 	}()
 }
 
 func (networkHandler *NetworkHandler) SendHandshake(client *Client) {
-	handshakeCmd := &ClientHandshake{
+	handshakeCmd := &Handshake{
 		Id: client.id,
 	}
 	jsonCmd, _ := json.Marshal(handshakeCmd)
@@ -71,10 +68,9 @@ func (networkHandler *NetworkHandler) Listen() {
 
 func NewNetworkHandler(gameWorld *GameWorld) *NetworkHandler {
 	networkHandler := &NetworkHandler{
-		clients:           make([]*Client, 0),
-		joins:             make(chan net.Conn),
-		gameWorld:         gameWorld,
-		connectionCounter: 0,
+		clients:   make([]*Client, 0),
+		joins:     make(chan net.Conn),
+		gameWorld: gameWorld,
 	}
 
 	return networkHandler

@@ -11,15 +11,23 @@ type GameWorld struct {
 	gameEntities   []*GameEntity
 	networkHandler *NetworkHandler
 
-	testChan chan string
+	chanAttack chan int32
+	idCounter  int32
 }
 
 func NewGameWorld() *GameWorld {
 	newGameWorld := &GameWorld{
 		gameEntities: make([]*GameEntity, 0),
+		chanAttack:   make(chan int32),
 	}
 
 	return newGameWorld
+}
+
+func (gameWorld *GameWorld) FetchNewEntityId() int32 {
+	newId := gameWorld.idCounter
+	gameWorld.idCounter++
+	return newId
 }
 
 func (gameWorld *GameWorld) AddGameEntity(gameEntity *GameEntity) {
@@ -27,7 +35,6 @@ func (gameWorld *GameWorld) AddGameEntity(gameEntity *GameEntity) {
 
 	// start entity loop
 	go gameEntity.Listen()
-	//go gameEntity.UpdateEntity()
 
 	log.Println("AddGameEntity(): ", gameEntity, "Entity Count: ", len(gameWorld.gameEntities))
 }
@@ -50,24 +57,40 @@ func (gameWorld *GameWorld) Start() {
 
 	// update clients
 	go gameWorld.Update()
+
+	// create dummy monster
+	gameWorld.AddGameEntity(NewGameEntity(gameWorld.FetchNewEntityId(), nil, nil, gameWorld.chanAttack, 1))
 }
 
 func (gameWorld *GameWorld) Update() {
 	for {
 		time.Sleep(40 * time.Millisecond) // sleep 40 ms
 
+		gameWorld.UpdateAttacks()
 		for _, gameEntity := range gameWorld.gameEntities {
 			gameEntity.UpdateEntity()
 		}
 
+		// send update to clients
 		updateWorldCmd := NewUpdateWorldStateCmd(gameWorld.gameEntities)
 		jsonCmd, _ := json.Marshal(updateWorldCmd)
 		jsonOutString := string(jsonCmd) + "\r"
-
+		// update entities
 		for _, gameEntity := range gameWorld.gameEntities {
-			gameEntity.chanOutAction <- string(jsonOutString)
-			//fmt.Println("Update Client:", time.Now(), "Entity:", index, "OutString:", string(jsonOutString))
+			if gameEntity.Type == 0 {
+				gameEntity.chanOutAction <- string(jsonOutString)
+				//fmt.Println("Update Client:", time.Now(), "Entity:", index, "OutString:", string(jsonOutString))
+			}
 		}
 	}
 
+}
+
+func (gameWorld *GameWorld) UpdateAttacks() {
+	// process attacks
+	select {
+	case attackTarget := <-gameWorld.chanAttack:
+		gameWorld.RemoveGameEntity(attackTarget)
+	default:
+	}
 }

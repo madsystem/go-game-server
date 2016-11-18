@@ -24,9 +24,10 @@ type GameEntity struct {
 
 	chanInAction  chan string
 	chanOutAction chan string
+	chanAttack    chan int32
 }
 
-func NewGameEntity(id int32, _chanInAction chan string, _chanOutAction chan string) *GameEntity {
+func NewGameEntity(id int32, _chanInAction chan string, _chanOutAction chan string, _chanAttack chan int32, _type int32) *GameEntity {
 	var mapSizeX float32 = 100.0
 	var mapSizeY float32 = 100.0
 	//maxVelX := 5
@@ -42,13 +43,14 @@ func NewGameEntity(id int32, _chanInAction chan string, _chanOutAction chan stri
 			50 + rand.Uint32()%100,
 		},
 
-		Type:          0,
+		Type:          _type,
 		Id:            id,
 		TargetPos:     [2]float32{0, 0},
 		maxSpeed:      8,
 		lastUpdate:    time.Now(),
 		chanInAction:  _chanInAction,
 		chanOutAction: _chanOutAction,
+		chanAttack:    _chanAttack,
 	}
 	return newGameEntity
 }
@@ -91,9 +93,16 @@ func (gameEntity *GameEntity) Listen() {
 			if err != nil {
 				log.Fatal(err)
 			}
-
 			//fmt.Println(gotoCmd)
 			gameEntity.TargetPos = gotoCmd.TargetPos
+		} else if cmd.Cmd == "attack" {
+			var attackCmd ClientAttackCmd
+			err = json.Unmarshal(cmd.Payload, &attackCmd)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			gameEntity.chanAttack <- attackCmd.AttackTarget
 
 		}
 	}

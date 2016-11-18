@@ -17,7 +17,11 @@ type ClientGotoCmd struct {
 	TargetPos [2]float32 `json:"pos"`
 }
 
-type ClientHandshake struct {
+type ClientAttackCmd struct {
+	AttackTarget int32 `json:"attackTarget"`
+}
+
+type Handshake struct {
 	Id int32 `json:"id"`
 }
 
