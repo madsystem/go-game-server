@@ -29,11 +29,11 @@ func (client *Client) Read() {
 
 func (client *Client) Write() {
 	for {
-		jsonString := <-client.chanOutAction
+		jsonString := <-client.chanOutAction + "\r"
 		_, error := client.writer.WriteString(jsonString)
 		if error != nil {
 			fmt.Println(error)
-			//client.chanDisconnected <- client
+			client.chanDisconnected <- client
 			// todo close + remove client
 			break
 		}

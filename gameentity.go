@@ -32,11 +32,11 @@ func NewGameEntity(id int32, _chanInAction chan string, _chanOutAction chan stri
 	var mapSizeY float32 = 100.0
 	//maxVelX := 5
 	//maxVelY := 5
+	startPosition := [2]float32{-mapSizeX/2 + rand.Float32()*mapSizeX,
+		-mapSizeY/2 + rand.Float32()*mapSizeY}
 
 	newGameEntity := &GameEntity{
-		Pos: [2]float32{-mapSizeX/2 + rand.Float32()*mapSizeX,
-			-mapSizeY/2 + rand.Float32()*mapSizeY},
-
+		Pos: startPosition,
 		Color: [3]uint32{
 			50 + rand.Uint32()%100,
 			50 + rand.Uint32()%100,
@@ -45,7 +45,7 @@ func NewGameEntity(id int32, _chanInAction chan string, _chanOutAction chan stri
 
 		Type:          _type,
 		Id:            id,
-		TargetPos:     [2]float32{0, 0},
+		TargetPos:     startPosition,
 		maxSpeed:      8,
 		lastUpdate:    time.Now(),
 		chanInAction:  _chanInAction,
@@ -88,7 +88,7 @@ func (gameEntity *GameEntity) Listen() {
 		}
 
 		if cmd.Cmd == "move" {
-			var gotoCmd ClientGotoCmd
+			var gotoCmd ClientGotoPosCmd
 			err = json.Unmarshal(cmd.Payload, &gotoCmd)
 			if err != nil {
 				log.Fatal(err)

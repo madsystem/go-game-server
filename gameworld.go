@@ -8,8 +8,9 @@ import (
 )
 
 type GameWorld struct {
-	gameEntities   []*GameEntity
-	networkHandler *NetworkHandler
+	gameEntities     []*GameEntity
+	networkHandler   *NetworkHandler
+	websocketHandler *WebsocketHandler
 
 	chanAttack chan int32
 	idCounter  int32
@@ -55,6 +56,10 @@ func (gameWorld *GameWorld) Start() {
 	gameWorld.networkHandler = newNetworkHandler
 	newNetworkHandler.Start()
 
+	newWebSocketHandler := NewWebsocketHandler(gameWorld)
+	gameWorld.websocketHandler = newWebSocketHandler
+	newWebSocketHandler.Start()
+
 	// update clients
 	go gameWorld.Update()
 
@@ -74,11 +79,10 @@ func (gameWorld *GameWorld) Update() {
 		// send update to clients
 		updateWorldCmd := NewUpdateWorldStateCmd(gameWorld.gameEntities)
 		jsonCmd, _ := json.Marshal(updateWorldCmd)
-		jsonOutString := string(jsonCmd) + "\r"
 		// update entities
 		for _, gameEntity := range gameWorld.gameEntities {
 			if gameEntity.Type == 0 {
-				gameEntity.chanOutAction <- string(jsonOutString)
+				gameEntity.chanOutAction <- string(jsonCmd)
 				//fmt.Println("Update Client:", time.Now(), "Entity:", index, "OutString:", string(jsonOutString))
 			}
 		}

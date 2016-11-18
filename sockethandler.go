@@ -43,7 +43,7 @@ func (networkHandler *NetworkHandler) SendHandshake(client *Client) {
 		Id: client.id,
 	}
 	jsonCmd, _ := json.Marshal(handshakeCmd)
-	jsonOutString := string(jsonCmd) + "\r"
+	jsonOutString := string(jsonCmd) 
 
 	client.chanOutAction <- jsonOutString
 }
@@ -56,6 +56,7 @@ func (networkHandler *NetworkHandler) Listen() {
 			networkHandler.joins <- conn
 		}
 	}()
+
 	go func() {
 		for {
 			select {
@@ -64,6 +65,7 @@ func (networkHandler *NetworkHandler) Listen() {
 			}
 		}
 	}()
+
 }
 
 func NewNetworkHandler(gameWorld *GameWorld) *NetworkHandler {
@@ -79,6 +81,7 @@ func NewNetworkHandler(gameWorld *GameWorld) *NetworkHandler {
 func (networkHandler *NetworkHandler) Start() {
 	fmt.Println("Waiting for players ...")
 	networkHandler.Listen()
+
 }
 
 func (networkHandler *NetworkHandler) RemoveClient(id int32) {

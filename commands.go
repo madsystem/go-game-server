@@ -13,8 +13,12 @@ type ClientBaseCmd struct {
 	Payload json.RawMessage `json:"payload"`
 }
 
-type ClientGotoCmd struct {
+type ClientGotoPosCmd struct {
 	TargetPos [2]float32 `json:"pos"`
+}
+
+type ClientGotoTargetCmd struct {
+	TargetId int32
 }
 
 type ClientAttackCmd struct {
