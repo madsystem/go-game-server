@@ -91,7 +91,8 @@ func (gameEntity *GameEntity) Listen() {
 			var gotoCmd ClientGotoPosCmd
 			err = json.Unmarshal(cmd.Payload, &gotoCmd)
 			if err != nil {
-				log.Fatal(err)
+				log.Println(err)
+				continue
 			}
 			//fmt.Println(gotoCmd)
 			gameEntity.TargetPos = gotoCmd.TargetPos
@@ -99,7 +100,8 @@ func (gameEntity *GameEntity) Listen() {
 			var attackCmd ClientAttackCmd
 			err = json.Unmarshal(cmd.Payload, &attackCmd)
 			if err != nil {
-				log.Fatal(err)
+				log.Println(err)
+				continue
 			}
 
 			gameEntity.chanAttack <- attackCmd.AttackTarget
