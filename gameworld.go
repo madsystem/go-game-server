@@ -9,7 +9,7 @@ import (
 
 type GameWorld struct {
 	gameEntities     []*GameEntity
-	networkHandler   *NetworkHandler
+	socketHandler    *SocketHandler
 	websocketHandler *WebsocketHandler
 
 	chanAttack chan int32
@@ -52,9 +52,9 @@ func (gameWorld *GameWorld) RemoveGameEntity(id int32) {
 
 func (gameWorld *GameWorld) Start() {
 	fmt.Println("Server started ...")
-	newNetworkHandler := NewNetworkHandler(gameWorld)
-	gameWorld.networkHandler = newNetworkHandler
-	newNetworkHandler.Start()
+	socketHandler := NewSocketHandler(gameWorld)
+	gameWorld.socketHandler = socketHandler
+	socketHandler.Start()
 
 	newWebSocketHandler := NewWebsocketHandler(gameWorld)
 	gameWorld.websocketHandler = newWebSocketHandler
