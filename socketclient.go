@@ -60,6 +60,5 @@ func NewSocketClient(connection net.Conn, _id int32) *SocketClient {
 	}
 
 	client.Listen()
-
 	return client
 }

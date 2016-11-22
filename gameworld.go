@@ -11,6 +11,7 @@ type GameWorld struct {
 	gameEntities     []*GameEntity
 	socketHandler    *SocketHandler
 	websocketHandler *WebsocketHandler
+	aiHandler        *AIHandler
 
 	chanAttack chan int32
 	idCounter  int32
@@ -36,8 +37,17 @@ func (gameWorld *GameWorld) AddGameEntity(gameEntity *GameEntity) {
 
 	// start entity loop
 	go gameEntity.Listen()
-
 	log.Println("AddGameEntity(): ", gameEntity, "Entity Count: ", len(gameWorld.gameEntities))
+}
+
+func (gameWorld *GameWorld) IsAttackable(id int32) bool {
+	for _, gameEntity := range gameWorld.gameEntities {
+		if gameEntity.Id == id && gameEntity.Type != 0 {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (gameWorld *GameWorld) RemoveGameEntity(id int32) {
@@ -51,20 +61,18 @@ func (gameWorld *GameWorld) RemoveGameEntity(id int32) {
 }
 
 func (gameWorld *GameWorld) Start() {
-	fmt.Println("Server started ...")
-	socketHandler := NewSocketHandler(gameWorld)
-	gameWorld.socketHandler = socketHandler
-	socketHandler.Start()
+	gameWorld.socketHandler = NewSocketHandler(gameWorld)
+	gameWorld.socketHandler.Start()
 
-	newWebSocketHandler := NewWebsocketHandler(gameWorld)
-	gameWorld.websocketHandler = newWebSocketHandler
-	newWebSocketHandler.Start()
+	gameWorld.websocketHandler = NewWebsocketHandler(gameWorld)
+	gameWorld.websocketHandler.Start()
 
+	gameWorld.aiHandler = NewAIHandler(gameWorld)
+	gameWorld.aiHandler.Start()
 	// update clients
 	go gameWorld.Update()
 
-	// create dummy monster
-	gameWorld.AddGameEntity(NewGameEntity(gameWorld.FetchNewEntityId(), nil, nil, gameWorld.chanAttack, 1))
+	fmt.Println("Server started ...")
 }
 
 func (gameWorld *GameWorld) Update() {
@@ -81,20 +89,19 @@ func (gameWorld *GameWorld) Update() {
 		jsonCmd, _ := json.Marshal(updateWorldCmd)
 		// update entities
 		for _, gameEntity := range gameWorld.gameEntities {
-			if gameEntity.Type == 0 {
-				gameEntity.chanOutAction <- string(jsonCmd)
-				//fmt.Println("Update Client:", time.Now(), "Entity:", index, "OutString:", string(jsonOutString))
-			}
+			gameEntity.chanOutAction <- string(jsonCmd)
 		}
 	}
 
 }
 
 func (gameWorld *GameWorld) UpdateAttacks() {
-	// process attacks
 	select {
 	case attackTarget := <-gameWorld.chanAttack:
-		gameWorld.RemoveGameEntity(attackTarget)
+		if gameWorld.IsAttackable(attackTarget) {
+			// entity got attacked, kill it
+			gameWorld.RemoveGameEntity(attackTarget)
+		}
 	default:
 	}
 }

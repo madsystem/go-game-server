@@ -18,8 +18,8 @@ type GameEntity struct {
 	Type      int32      `json:"entityType"`
 	Id        int32      `json:"id"`
 	Color     [3]uint32  `json:"color"`
+	Velocity  float32    `json:"velocity"`
 
-	maxSpeed   float32
 	lastUpdate time.Time
 
 	chanInAction  chan string
@@ -30,8 +30,6 @@ type GameEntity struct {
 func NewGameEntity(id int32, _chanInAction chan string, _chanOutAction chan string, _chanAttack chan int32, _type int32) *GameEntity {
 	var mapSizeX float32 = 100.0
 	var mapSizeY float32 = 100.0
-	//maxVelX := 5
-	//maxVelY := 5
 	startPosition := [2]float32{-mapSizeX/2 + rand.Float32()*mapSizeX,
 		-mapSizeY/2 + rand.Float32()*mapSizeY}
 
@@ -46,17 +44,16 @@ func NewGameEntity(id int32, _chanInAction chan string, _chanOutAction chan stri
 		Type:          _type,
 		Id:            id,
 		TargetPos:     startPosition,
-		maxSpeed:      8,
 		lastUpdate:    time.Now(),
 		chanInAction:  _chanInAction,
 		chanOutAction: _chanOutAction,
 		chanAttack:    _chanAttack,
+		Velocity:      8 - rand.Float32()*4.0, // speed between 4 - 8 ms/s
 	}
 	return newGameEntity
 }
 
 func (gameEntity *GameEntity) UpdateEntity() {
-	//time.Sleep(40 * time.Millisecond)
 	var posVec vec2.T = gameEntity.Pos
 	var targetPosVec vec2.T = gameEntity.TargetPos
 	toTarget := vec2.Sub(&targetPosVec, &posVec)
@@ -65,10 +62,8 @@ func (gameEntity *GameEntity) UpdateEntity() {
 		toTarget.Normalize()
 
 		elapsed := time.Since(gameEntity.lastUpdate).Seconds()
-		//log.Println("posVec", posVec, "targetPosVec", targetPosVec, "toTarget", toTarget, "elapsed", elapsed)
-		gameEntity.Pos[0] += toTarget[0] * gameEntity.maxSpeed * float32(elapsed)
-		gameEntity.Pos[1] += toTarget[1] * gameEntity.maxSpeed * float32(elapsed)
-		//log.Println(gameEntity.Id, gameEntity.Pos)
+		gameEntity.Pos[0] += toTarget[0] * gameEntity.Velocity * float32(elapsed)
+		gameEntity.Pos[1] += toTarget[1] * gameEntity.Velocity * float32(elapsed)
 	}
 
 	gameEntity.lastUpdate = time.Now()
@@ -94,7 +89,6 @@ func (gameEntity *GameEntity) Listen() {
 				log.Println(err)
 				continue
 			}
-			//fmt.Println(gotoCmd)
 			gameEntity.TargetPos = gotoCmd.TargetPos
 		} else if cmd.Cmd == "attack" {
 			var attackCmd ClientAttackCmd

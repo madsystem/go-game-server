@@ -42,8 +42,8 @@ func (client *WebsocketClient) Read() {
 
 func (client *WebsocketClient) Write() {
 	for {
-		jsonString := <-client.chanOutCmd 
-		error := client.conn.WriteMessage(1, []byte(jsonString))
+		jsonString := <-client.chanOutCmd
+		error := client.conn.WriteMessage(2, []byte(jsonString)) // use binary message type
 		if error != nil {
 			fmt.Println(error)
 			client.chanDisconnected <- client
