@@ -13,5 +13,4 @@ func main() {
 	fmt.Println("Setting up server ...")
 	gameWorld.Start()
 	wg.Wait()
-
 }

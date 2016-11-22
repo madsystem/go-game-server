@@ -7,20 +7,25 @@ import (
 	"time"
 )
 
+type Attack struct {
+	attackerId int32
+	targetId   int32
+}
+
 type GameWorld struct {
 	gameEntities     []*GameEntity
 	socketHandler    *SocketHandler
 	websocketHandler *WebsocketHandler
 	aiHandler        *AIHandler
 
-	chanAttack chan int32
+	chanAttack chan Attack
 	idCounter  int32
 }
 
 func NewGameWorld() *GameWorld {
 	newGameWorld := &GameWorld{
 		gameEntities: make([]*GameEntity, 0),
-		chanAttack:   make(chan int32),
+		chanAttack:   make(chan Attack),
 	}
 
 	return newGameWorld
@@ -92,15 +97,24 @@ func (gameWorld *GameWorld) Update() {
 			gameEntity.chanOutAction <- string(jsonCmd)
 		}
 	}
+}
 
+func (gameWorld *GameWorld) AddScore(id int32) {
+	for _, gameEntity := range gameWorld.gameEntities {
+		if gameEntity.Id == id {
+			gameEntity.Score++
+			break
+		}
+	}
 }
 
 func (gameWorld *GameWorld) UpdateAttacks() {
 	select {
-	case attackTarget := <-gameWorld.chanAttack:
-		if gameWorld.IsAttackable(attackTarget) {
+	case attack := <-gameWorld.chanAttack:
+		if gameWorld.IsAttackable(attack.targetId) {
 			// entity got attacked, kill it
-			gameWorld.RemoveGameEntity(attackTarget)
+			gameWorld.AddScore(attack.attackerId)
+			gameWorld.RemoveGameEntity(attack.targetId)
 		}
 	default:
 	}

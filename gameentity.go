@@ -19,19 +19,26 @@ type GameEntity struct {
 	Id        int32      `json:"id"`
 	Color     [3]uint32  `json:"color"`
 	Velocity  float32    `json:"velocity"`
+	Score     uint32     `json:"score"`
 
 	lastUpdate time.Time
 
 	chanInAction  chan string
 	chanOutAction chan string
-	chanAttack    chan int32
+	chanAttack    chan Attack
 }
 
-func NewGameEntity(id int32, _chanInAction chan string, _chanOutAction chan string, _chanAttack chan int32, _type int32) *GameEntity {
+func NewGameEntity(id int32, _chanInAction chan string, _chanOutAction chan string, _chanAttack chan Attack, _type int32) *GameEntity {
 	var mapSizeX float32 = 100.0
 	var mapSizeY float32 = 100.0
 	startPosition := [2]float32{-mapSizeX/2 + rand.Float32()*mapSizeX,
 		-mapSizeY/2 + rand.Float32()*mapSizeY}
+	var velocity float32
+	if _type == 0 {
+		velocity = 8
+	} else {
+		velocity = 8 - rand.Float32()*4.0 // speed between 4 - 8 ms/s
+	}
 
 	newGameEntity := &GameEntity{
 		Pos: startPosition,
@@ -48,7 +55,8 @@ func NewGameEntity(id int32, _chanInAction chan string, _chanOutAction chan stri
 		chanInAction:  _chanInAction,
 		chanOutAction: _chanOutAction,
 		chanAttack:    _chanAttack,
-		Velocity:      8 - rand.Float32()*4.0, // speed between 4 - 8 ms/s
+		Velocity:      velocity,
+		Score:         0,
 	}
 	return newGameEntity
 }
@@ -98,7 +106,7 @@ func (gameEntity *GameEntity) Listen() {
 				continue
 			}
 
-			gameEntity.chanAttack <- attackCmd.AttackTarget
+			gameEntity.chanAttack <- Attack{gameEntity.Id, int32(attackCmd.AttackTarget)}
 
 		}
 	}
