@@ -22,7 +22,16 @@ func (handler *WebsocketHandler) Join(w http.ResponseWriter, r *http.Request) {
 
 	// create game entity and register it. not nice but works for now (create factory later)
 	id := handler.gameWorld.FetchNewEntityId()
-	conn, _ := handler.upgrader.Upgrade(w, r, nil)
+	var conn *websocket.Conn
+
+	protocol := websocket.Subprotocols(r)
+	if len(protocol) > 0 {
+		newHeader := http.Header{"Sec-Websocket-Protocol": {protocol[0]}}
+		conn, _ = handler.upgrader.Upgrade(w, r, newHeader)
+	} else {
+		conn, _ = handler.upgrader.Upgrade(w, r, nil)
+	}
+
 	client := NewWebsocketClient(id, conn)
 	gameEntity := NewGameEntity(id, client.chanInCmd, client.chanOutCmd, handler.gameWorld.chanAttack, 0)
 
@@ -90,10 +99,8 @@ func (handler *WebsocketHandler) SetupWebSocket() {
 	handler.upgrader.CheckOrigin = alwaysTrue
 	flag.Parse()
 	log.SetFlags(0)
-	var addr = flag.String("addr", ":4446", "web socket port")
+	var addr = flag.String("addr", ":4446", " server web socket port")
 
-	http.HandleFunc("/echo", handler.Join)
-	http.HandleFunc("/ws", handler.Join)
 	http.HandleFunc("/", handler.Join)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }

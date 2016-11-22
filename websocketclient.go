@@ -43,6 +43,7 @@ func (client *WebsocketClient) Read() {
 func (client *WebsocketClient) Write() {
 	for {
 		jsonString := <-client.chanOutCmd
+		jsonString = jsonString + "\r"
 		error := client.conn.WriteMessage(2, []byte(jsonString)) // use binary message type
 		if error != nil {
 			fmt.Println(error)
