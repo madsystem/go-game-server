@@ -7,18 +7,19 @@ import (
 	"time"
 )
 
-type AIClient struct {
+// aiClient handles
+type aiClient struct {
 	chanInCmd  chan string
 	chanOutCmd chan string
-	targetId   int32
+	targetID   int32
 	targetPos  [2]float32
 }
 
-func NewAIClient() *AIClient {
-	newClient := &AIClient{
+func newAIClient() *aiClient {
+	newClient := &aiClient{
 		chanInCmd:  make(chan string),
 		chanOutCmd: make(chan string),
-		targetId:   -1,
+		targetID:   -1,
 		targetPos:  [2]float32{0, 0},
 	}
 
@@ -26,12 +27,12 @@ func NewAIClient() *AIClient {
 	return newClient
 }
 
-func (client *AIClient) FindTargetId(worldState UpdateWorldStateCmd) int32 {
+func (client *aiClient) findTargetID(worldState worldStateCmd) int32 {
 	var possibleTargets []int32
 	for _, gameClient := range worldState.GameEntities {
 		if gameClient.Type == 0 {
 			// todo random target
-			possibleTargets = append(possibleTargets, gameClient.Id)
+			possibleTargets = append(possibleTargets, gameClient.ID)
 		}
 	}
 
@@ -42,55 +43,55 @@ func (client *AIClient) FindTargetId(worldState UpdateWorldStateCmd) int32 {
 	return -1
 }
 
-func (client *AIClient) FindTargetPos(id int32, worldState UpdateWorldStateCmd) [2]float32 {
+func (client *aiClient) findTargetPos(id int32, worldState worldStateCmd) [2]float32 {
 	for _, gameClient := range worldState.GameEntities {
-		if gameClient.Id == id {
+		if gameClient.ID == id {
 			return gameClient.Pos
 		}
 	}
 
 	fmt.Println("AIHandler::FindTargetPos() id not found:", id)
-	client.targetId = -1
+	client.targetID = -1
 	return client.targetPos
 }
 
-func (client *AIClient) Read() {
+func (client *aiClient) read() {
 	for {
 		outCmd := <-client.chanOutCmd
-		var worldState UpdateWorldStateCmd
+		var worldState worldStateCmd
 		json.Unmarshal([]byte(outCmd), &worldState)
 
-		if client.targetId == -1 {
-			client.targetId = client.FindTargetId(worldState)
+		if client.targetID == -1 {
+			client.targetID = client.findTargetID(worldState)
 		}
 
-		if client.targetId != -1 {
-			targetPos := client.FindTargetPos(client.targetId, worldState)
+		if client.targetID != -1 {
+			targetPos := client.findTargetPos(client.targetID, worldState)
 			client.targetPos = targetPos
 		}
 	}
 }
 
-func (client *AIClient) Write() {
+func (client *aiClient) write() {
 	for {
 		time.Sleep(1 * time.Second)
 
-		moveCmd := &ClientGotoPosCmd{
+		moveCmd := &clientGotoPosCmd{
 			TargetPos: client.targetPos,
 		}
 
 		jsonCmd, _ := json.Marshal(moveCmd)
-		baseMoveCmd := &ClientBaseCmd{
+		baseMoveCmd := &clientBaseCmd{
 			Cmd:     "move",
 			Payload: jsonCmd,
 		}
 
-		moveJson, _ := json.Marshal(baseMoveCmd)
-		client.chanInCmd <- string(moveJson)
+		moveJSON, _ := json.Marshal(baseMoveCmd)
+		client.chanInCmd <- string(moveJSON)
 	}
 }
 
-func (client *AIClient) Listen() {
-	go client.Read()
-	go client.Write()
+func (client *aiClient) Listen() {
+	go client.read()
+	go client.write()
 }

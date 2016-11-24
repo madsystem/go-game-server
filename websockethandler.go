@@ -10,18 +10,18 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type WebsocketHandler struct {
-	clients   []*WebsocketClient
+type websocketHandler struct {
+	clients   []*websocketClient
 	joins     chan websocket.Conn
-	gameWorld *GameWorld
+	gameWorld *gameWorld
 	upgrader  websocket.Upgrader
 }
 
-func (handler *WebsocketHandler) Join(w http.ResponseWriter, r *http.Request) {
+func (handler *websocketHandler) join(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Websocket Recv connection")
 
 	// create game entity and register it. not nice but works for now (create factory later)
-	id := handler.gameWorld.FetchNewEntityId()
+	id := handler.gameWorld.fetchNewEntityID()
 	var conn *websocket.Conn
 
 	protocol := websocket.Subprotocols(r)
@@ -32,14 +32,14 @@ func (handler *WebsocketHandler) Join(w http.ResponseWriter, r *http.Request) {
 		conn, _ = handler.upgrader.Upgrade(w, r, nil)
 	}
 
-	client := NewWebsocketClient(id, conn)
-	gameEntity := NewGameEntity(id, client.chanInCmd, client.chanOutCmd, handler.gameWorld.chanAttack, 0)
+	client := newWebsocketClient(id, conn)
+	gameEntity := newGameEntity(id, client.chanInCmd, client.chanOutCmd, handler.gameWorld.chanAttack, 0)
 
 	// send handshake
-	handler.SendHandshake(client)
+	handler.sendHandshake(client)
 
 	// add
-	handler.gameWorld.AddGameEntity(gameEntity)
+	handler.gameWorld.addGameEntity(gameEntity)
 	handler.clients = append(handler.clients, client)
 
 	// setup distribution channels
@@ -47,15 +47,15 @@ func (handler *WebsocketHandler) Join(w http.ResponseWriter, r *http.Request) {
 		for {
 			client := <-client.chanDisconnected
 			fmt.Println("Player Disconnected")
-			handler.gameWorld.RemoveGameEntity(client.id)
-			handler.RemoveClient(client.id)
+			handler.gameWorld.removeGameEntity(client.id)
+			handler.removeClient(client.id)
 		}
 	}()
 }
 
-func (handler *WebsocketHandler) SendHandshake(client *WebsocketClient) {
-	handshakeCmd := &Handshake{
-		Id: client.id,
+func (handler *websocketHandler) sendHandshake(client *websocketClient) {
+	handshakeCmd := &handshake{
+		ID: client.id,
 	}
 	jsonCmd, _ := json.Marshal(handshakeCmd)
 	jsonOutString := string(jsonCmd)
@@ -63,24 +63,25 @@ func (handler *WebsocketHandler) SendHandshake(client *WebsocketClient) {
 	client.chanOutCmd <- jsonOutString
 }
 
-func NewWebsocketHandler(gameWorld *GameWorld) *WebsocketHandler {
-	handler := &WebsocketHandler{
-		clients:   make([]*WebsocketClient, 0),
+func newWebsocketHandler(gameWorld *gameWorld) *websocketHandler {
+	handler := &websocketHandler{
+		clients:   make([]*websocketClient, 0),
 		gameWorld: gameWorld,
 	}
 
 	return handler
 }
 
-func (handler *WebsocketHandler) Start() {
+func (handler *websocketHandler) start() {
 	fmt.Println("Waiting for players ...")
-	go handler.SetupWebSocket()
+	go handler.setupWebSocket()
 
 }
 
-func (handler *WebsocketHandler) RemoveClient(id int32) {
+func (handler *websocketHandler) removeClient(id int32) {
 	for i, client := range handler.clients {
 		if client.id == id {
+			client.conn.Close()
 			handler.clients = append(handler.clients[:i], handler.clients[i+1:]...)
 			break
 		}
@@ -93,7 +94,7 @@ func alwaysTrue(r *http.Request) bool {
 	return true
 }
 
-func (handler *WebsocketHandler) SetupWebSocket() {
+func (handler *websocketHandler) setupWebSocket() {
 
 	// web socket
 	handler.upgrader.CheckOrigin = alwaysTrue
@@ -101,6 +102,6 @@ func (handler *WebsocketHandler) SetupWebSocket() {
 	log.SetFlags(0)
 	var addr = flag.String("addr", ":4446", " server web socket port")
 
-	http.HandleFunc("/", handler.Join)
+	http.HandleFunc("/", handler.join)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }

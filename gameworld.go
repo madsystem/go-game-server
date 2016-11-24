@@ -7,47 +7,47 @@ import (
 	"time"
 )
 
-type Attack struct {
-	attackerId int32
-	targetId   int32
+type attackInfo struct {
+	attackerID int32
+	targetID   int32
 }
 
-type GameWorld struct {
-	gameEntities     []*GameEntity
-	socketHandler    *SocketHandler
-	websocketHandler *WebsocketHandler
-	aiHandler        *AIHandler
+type gameWorld struct {
+	gameEntities     []*gameEntity
+	socketHandler    *socketHandler
+	websocketHandler *websocketHandler
+	aiHandler        *aiHandler
 
-	chanAttack chan Attack
+	chanAttack chan attackInfo
 	idCounter  int32
 }
 
-func NewGameWorld() *GameWorld {
-	newGameWorld := &GameWorld{
-		gameEntities: make([]*GameEntity, 0),
-		chanAttack:   make(chan Attack),
+func newGameWorld() *gameWorld {
+	newgameWorld := &gameWorld{
+		gameEntities: make([]*gameEntity, 0),
+		chanAttack:   make(chan attackInfo),
 	}
 
-	return newGameWorld
+	return newgameWorld
 }
 
-func (gameWorld *GameWorld) FetchNewEntityId() int32 {
-	newId := gameWorld.idCounter
+func (gameWorld *gameWorld) fetchNewEntityID() int32 {
+	newID := gameWorld.idCounter
 	gameWorld.idCounter++
-	return newId
+	return newID
 }
 
-func (gameWorld *GameWorld) AddGameEntity(gameEntity *GameEntity) {
+func (gameWorld *gameWorld) addGameEntity(gameEntity *gameEntity) {
 	gameWorld.gameEntities = append(gameWorld.gameEntities, gameEntity)
 
 	// start entity loop
-	go gameEntity.Listen()
+	go gameEntity.listen()
 	log.Println("AddGameEntity(): ", gameEntity, "Entity Count: ", len(gameWorld.gameEntities))
 }
 
-func (gameWorld *GameWorld) IsAttackable(id int32) bool {
+func (gameWorld *gameWorld) isAttackable(id int32) bool {
 	for _, gameEntity := range gameWorld.gameEntities {
-		if gameEntity.Id == id && gameEntity.Type != 0 {
+		if gameEntity.ID == id && gameEntity.Type != 0 {
 			return true
 		}
 	}
@@ -55,43 +55,43 @@ func (gameWorld *GameWorld) IsAttackable(id int32) bool {
 	return false
 }
 
-func (gameWorld *GameWorld) RemoveGameEntity(id int32) {
+func (gameWorld *gameWorld) removeGameEntity(id int32) {
 	log.Println("RemoveGameEntity: ", id)
 	for i, gameEntity := range gameWorld.gameEntities {
-		if gameEntity.Id == id {
+		if gameEntity.ID == id {
 			gameWorld.gameEntities = append(gameWorld.gameEntities[:i], gameWorld.gameEntities[i+1:]...)
 			break
 		}
 	}
 }
 
-func (gameWorld *GameWorld) Start() {
-	gameWorld.socketHandler = NewSocketHandler(gameWorld)
-	gameWorld.socketHandler.Start()
+func (gameWorld *gameWorld) Start() {
+	gameWorld.socketHandler = newSocketHandler(gameWorld)
+	gameWorld.socketHandler.start()
 
-	gameWorld.websocketHandler = NewWebsocketHandler(gameWorld)
-	gameWorld.websocketHandler.Start()
+	gameWorld.websocketHandler = newWebsocketHandler(gameWorld)
+	gameWorld.websocketHandler.start()
 
-	gameWorld.aiHandler = NewAIHandler(gameWorld)
-	gameWorld.aiHandler.Start()
+	gameWorld.aiHandler = newAIHandler(gameWorld)
+	gameWorld.aiHandler.start()
 	// update clients
-	go gameWorld.Update()
+	go gameWorld.update()
 
 	fmt.Println("Server started ...")
 }
 
-func (gameWorld *GameWorld) Update() {
+func (gameWorld *gameWorld) update() {
 	for {
 		time.Sleep(40 * time.Millisecond) // sleep 40 ms
 
-		gameWorld.UpdateAttacks()
+		gameWorld.updateAttacks()
 		for _, gameEntity := range gameWorld.gameEntities {
-			gameEntity.UpdateEntity()
+			gameEntity.updateEntity()
 		}
 
 		// send update to clients
-		updateWorldCmd := NewUpdateWorldStateCmd(gameWorld.gameEntities)
-		jsonCmd, _ := json.Marshal(updateWorldCmd)
+		worldStateCmd := newWorldStateCmd(gameWorld.gameEntities)
+		jsonCmd, _ := json.Marshal(worldStateCmd)
 		// update entities
 		for _, gameEntity := range gameWorld.gameEntities {
 			gameEntity.chanOutAction <- string(jsonCmd)
@@ -99,22 +99,22 @@ func (gameWorld *GameWorld) Update() {
 	}
 }
 
-func (gameWorld *GameWorld) AddScore(id int32) {
+func (gameWorld *gameWorld) addScore(id int32) {
 	for _, gameEntity := range gameWorld.gameEntities {
-		if gameEntity.Id == id {
+		if gameEntity.ID == id {
 			gameEntity.Score++
 			break
 		}
 	}
 }
 
-func (gameWorld *GameWorld) UpdateAttacks() {
+func (gameWorld *gameWorld) updateAttacks() {
 	select {
 	case attack := <-gameWorld.chanAttack:
-		if gameWorld.IsAttackable(attack.targetId) {
+		if gameWorld.isAttackable(attack.targetID) {
 			// entity got attacked, kill it
-			gameWorld.AddScore(attack.attackerId)
-			gameWorld.RemoveGameEntity(attack.targetId)
+			gameWorld.addScore(attack.attackerID)
+			gameWorld.removeGameEntity(attack.targetID)
 		}
 	default:
 	}

@@ -6,25 +6,25 @@ import (
 	"net"
 )
 
-type SocketHandler struct {
-	clients   []*SocketClient
+type socketHandler struct {
+	clients   []*socketClient
 	joins     chan net.Conn
-	gameWorld *GameWorld
+	gameWorld *gameWorld
 }
 
-func (handler *SocketHandler) Join(connection net.Conn) {
+func (handler *socketHandler) join(connection net.Conn) {
 	fmt.Println("Recv connection", connection)
 
 	// create game entity and register it. not nice but works for now (create factory later)
-	id := handler.gameWorld.FetchNewEntityId()
-	client := NewSocketClient(connection, id)
-	gameEntity := NewGameEntity(id, client.chanInAction, client.chanOutAction, handler.gameWorld.chanAttack, 0)
+	id := handler.gameWorld.fetchNewEntityID()
+	client := newSocketClient(connection, id)
+	gameEntity := newGameEntity(id, client.chanInAction, client.chanOutAction, handler.gameWorld.chanAttack, 0)
 
 	// send handshake
-	handler.SendHandshake(client)
+	handler.sendHandshake(client)
 
-	// add
-	handler.gameWorld.AddGameEntity(gameEntity)
+	// add to handler and to gameworld
+	handler.gameWorld.addGameEntity(gameEntity)
 	handler.clients = append(handler.clients, client)
 
 	// setup distribution channels
@@ -32,15 +32,16 @@ func (handler *SocketHandler) Join(connection net.Conn) {
 		for {
 			client := <-client.chanDisconnected
 			fmt.Println("Player Disconnected")
-			handler.gameWorld.RemoveGameEntity(client.id)
-			handler.RemoveClient(client.id)
+			client.conn.Close()
+			handler.gameWorld.removeGameEntity(client.id)
+			handler.removeClient(client.id)
 		}
 	}()
 }
 
-func (handler *SocketHandler) SendHandshake(client *SocketClient) {
-	handshakeCmd := &Handshake{
-		Id: client.id,
+func (handler *socketHandler) sendHandshake(client *socketClient) {
+	handshakeCmd := &handshake{
+		ID: client.id,
 	}
 	jsonCmd, _ := json.Marshal(handshakeCmd)
 	jsonOutString := string(jsonCmd)
@@ -48,7 +49,7 @@ func (handler *SocketHandler) SendHandshake(client *SocketClient) {
 	client.chanOutAction <- jsonOutString
 }
 
-func (handler *SocketHandler) Listen() {
+func (handler *socketHandler) listen() {
 	go func() {
 		listener, _ := net.Listen("tcp", ":4444")
 		for {
@@ -61,16 +62,16 @@ func (handler *SocketHandler) Listen() {
 		for {
 			select {
 			case conn := <-handler.joins:
-				handler.Join(conn)
+				handler.join(conn)
 			}
 		}
 	}()
 
 }
 
-func NewSocketHandler(gameWorld *GameWorld) *SocketHandler {
-	handler := &SocketHandler{
-		clients:   make([]*SocketClient, 0),
+func newSocketHandler(gameWorld *gameWorld) *socketHandler {
+	handler := &socketHandler{
+		clients:   make([]*socketClient, 0),
 		joins:     make(chan net.Conn),
 		gameWorld: gameWorld,
 	}
@@ -78,13 +79,13 @@ func NewSocketHandler(gameWorld *GameWorld) *SocketHandler {
 	return handler
 }
 
-func (handler *SocketHandler) Start() {
+func (handler *socketHandler) start() {
 	fmt.Println("Waiting for players ...")
-	handler.Listen()
+	handler.listen()
 
 }
 
-func (handler *SocketHandler) RemoveClient(id int32) {
+func (handler *socketHandler) removeClient(id int32) {
 	for i, client := range handler.clients {
 		if client.id == id {
 			handler.clients = append(handler.clients[:i], handler.clients[i+1:]...)

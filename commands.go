@@ -2,35 +2,33 @@ package main
 
 import "encoding/json"
 
-type UpdateWorldStateCmd struct {
+type worldStateCmd struct {
 	Cmd          string        `json:"cmd"`
-	Id           int32         `json:"id"`
-	GameEntities []*GameEntity `json:"payload"`
+	ID           int32         `json:"id"`
+	GameEntities []*gameEntity `json:"payload"`
 }
 
-type ClientBaseCmd struct {
+type clientBaseCmd struct {
 	Cmd     string          `json:"cmd"`
 	Payload json.RawMessage `json:"payload"`
 }
 
-type ClientGotoPosCmd struct {
+type clientGotoPosCmd struct {
 	TargetPos [2]float32 `json:"pos"`
 }
 
-type ClientAttackCmd struct {
+type clientAttackCmd struct {
 	AttackTarget int32 `json:"id"`
 }
 
-
-
-type Handshake struct {
-	Id int32 `json:"id"`
+type handshake struct {
+	ID int32 `json:"id"`
 }
 
-func NewUpdateWorldStateCmd(gameEntities []*GameEntity) *UpdateWorldStateCmd {
-	newCmd := &UpdateWorldStateCmd{
+func newWorldStateCmd(gameEntities []*gameEntity) *worldStateCmd {
+	newCmd := &worldStateCmd{
 		Cmd:          "worldState",
-		Id:           0,
+		ID:           0,
 		GameEntities: gameEntities,
 	}
 
