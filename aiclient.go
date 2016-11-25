@@ -23,7 +23,7 @@ func newAIClient() *aiClient {
 		targetPos:  [2]float32{0, 0},
 	}
 
-	newClient.Listen()
+	newClient.open()
 	return newClient
 }
 
@@ -56,6 +56,7 @@ func (client *aiClient) findTargetPos(id int32, worldState worldStateCmd) [2]flo
 }
 
 func (client *aiClient) read() {
+	defer client.close()
 	for {
 		outCmd := <-client.chanOutCmd
 		var worldState worldStateCmd
@@ -73,6 +74,7 @@ func (client *aiClient) read() {
 }
 
 func (client *aiClient) write() {
+	defer client.close()
 	for {
 		time.Sleep(1 * time.Second)
 
@@ -91,7 +93,23 @@ func (client *aiClient) write() {
 	}
 }
 
-func (client *aiClient) Listen() {
+func (client *aiClient) open() {
 	go client.read()
 	go client.write()
+}
+
+func (client *aiClient) close() {
+
+}
+
+func (client *aiClient) getInCmdChan() chan string {
+	return client.chanInCmd
+}
+
+func (client *aiClient) getOutCmdChan() chan string {
+	return client.chanOutCmd
+}
+
+func (client *aiClient) getType() int32 {
+	return 1
 }

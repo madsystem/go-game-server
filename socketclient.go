@@ -7,36 +7,35 @@ import (
 )
 
 type socketClient struct {
-	id               int32
-	chanInAction     chan string
-	chanOutAction    chan string
-	chanDisconnected chan *socketClient
-	reader           *bufio.Reader
-	writer           *bufio.Writer
-	conn             net.Conn
+	chanInCmd   chan string
+	chanOutCmd  chan string
+	chanDispose chan bool
+	reader      *bufio.Reader
+	writer      *bufio.Writer
+	conn        net.Conn
 }
 
 func (client *socketClient) read() {
-	defer client.conn.Close()
+	defer client.close()
 	for {
 		line, error := client.reader.ReadString('\r')
 		if error != nil {
 			fmt.Println(error)
-			client.chanDisconnected <- client
+			//client.chanDispose <- client
 			break
 		}
-		client.chanInAction <- line
+		client.chanInCmd <- line
 	}
 }
 
 func (client *socketClient) write() {
-	defer client.conn.Close()
+	defer client.close()
 	for {
-		jsonString := <-client.chanOutAction + "\r"
+		jsonString := <-client.chanOutCmd + "\r"
 		_, error := client.writer.WriteString(jsonString)
 		if error != nil {
 			fmt.Println(error)
-			client.chanDisconnected <- client
+			//client.chanDisconnected <- client
 			// todo close + remove client
 			break
 		}
@@ -44,25 +43,40 @@ func (client *socketClient) write() {
 	}
 }
 
-func (client *socketClient) listen() {
+func (client *socketClient) open() {
 	go client.read()
 	go client.write()
 }
 
-func newSocketClient(_connection net.Conn, _id int32) *socketClient {
+func newSocketClient(_connection net.Conn) *socketClient {
 	writer := bufio.NewWriter(_connection)
 	reader := bufio.NewReader(_connection)
 
 	client := &socketClient{
-		chanInAction:     make(chan string),
-		chanOutAction:    make(chan string),
-		chanDisconnected: make(chan *socketClient),
-		id:               _id,
-		reader:           reader,
-		writer:           writer,
-		conn:             _connection,
+		chanInCmd:  make(chan string),
+		chanOutCmd: make(chan string),
+		//chanDispose: make(chan bool),
+		reader: reader,
+		writer: writer,
+		conn:   _connection,
 	}
 
-	client.listen()
+	client.open()
 	return client
+}
+
+func (client *socketClient) getInCmdChan() chan string {
+	return client.chanInCmd
+}
+
+func (client *socketClient) getOutCmdChan() chan string {
+	return client.chanOutCmd
+}
+
+func (client *socketClient) getType() int32 {
+	return 0
+}
+
+func (client *socketClient) close() {
+	client.conn.Close()
 }

@@ -7,16 +7,14 @@ type websocketClient struct {
 	chanInCmd        chan string
 	chanOutCmd       chan string
 	chanDisconnected chan *websocketClient
-	id               int32
 	conn             *websocket.Conn
 }
 
-func newWebsocketClient(_id int32, _conn *websocket.Conn) *websocketClient {
+func newWebsocketClient(_conn *websocket.Conn) *websocketClient {
 	client := &websocketClient{
 		chanInCmd:        make(chan string),
 		chanOutCmd:       make(chan string),
 		chanDisconnected: make(chan *websocketClient),
-		id:               _id,
 		conn:             _conn,
 	}
 
@@ -59,4 +57,16 @@ func (client *websocketClient) write() {
 func (client *websocketClient) listen() {
 	go client.read()
 	go client.write()
+}
+
+func (client *websocketClient) getInCmdChan() chan string {
+	return client.chanInCmd
+}
+
+func (client *websocketClient) getOutCmdChan() chan string {
+	return client.chanOutCmd
+}
+
+func (client *websocketClient) getType() int32 {
+	return 0
 }

@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"time"
-
 	"strings"
+	"time"
 
 	"github.com/ungerik/go3d/vec2"
 )
 
+var idCounter int32
+
+// todo put a read write select statemant to ensure no run coditions occure
+// eg. put the read of game entity
 type gameEntity struct {
 	Pos       [2]float32 `json:"pos"`
 	TargetPos [2]float32 `json:"targetPos"`
@@ -23,19 +26,20 @@ type gameEntity struct {
 
 	lastUpdate time.Time
 
-	chanInAction  chan string
-	chanOutAction chan string
-	chanAttack    chan attackInfo
-	chanDead      chan *gameEntity
+	client       client
+	clientInCmd  chan string
+	clientOutCmd chan string
+	clientDone   chan bool
+	toGameWorld  chan clientCmd
 }
 
-func newGameEntity(id int32, _chanInAction chan string, _chanOutAction chan string, _chanAttack chan attackInfo, _type int32) *gameEntity {
+func newGameEntity(client client, toGameWorldChan chan clientCmd) *gameEntity {
 	var mapSizeX float32 = 100.0
 	var mapSizeY float32 = 100.0
 	startPosition := [2]float32{-mapSizeX/2 + rand.Float32()*mapSizeX,
 		-mapSizeY/2 + rand.Float32()*mapSizeY}
 	var velocity float32
-	if _type == 0 {
+	if client.getType() == 0 {
 		velocity = 8
 	} else {
 		velocity = 8 - rand.Float32()*4.0 // speed between 4 - 8 ms/s
@@ -49,16 +53,23 @@ func newGameEntity(id int32, _chanInAction chan string, _chanOutAction chan stri
 			50 + rand.Uint32()%100,
 		},
 
-		Type:          _type,
-		ID:            id,
-		TargetPos:     startPosition,
-		lastUpdate:    time.Now(),
-		chanInAction:  _chanInAction,
-		chanOutAction: _chanOutAction,
-		chanAttack:    _chanAttack,
-		Velocity:      velocity,
-		Score:         0,
+		Type:         client.getType(),
+		client:       client,
+		ID:           idCounter,
+		TargetPos:    startPosition,
+		lastUpdate:   time.Now(),
+		clientInCmd:  client.getInCmdChan(),
+		clientOutCmd: client.getOutCmdChan(),
+		toGameWorld:  toGameWorldChan,
+		Velocity:     velocity,
+		Score:        0,
 	}
+
+	idCounter++
+
+	// start entity loop
+	go newGameEntity.listen()
+
 	return newGameEntity
 }
 
@@ -80,10 +91,10 @@ func (gameEntity *gameEntity) updateEntity() {
 
 func (gameEntity *gameEntity) listen() {
 	for {
-		incAction := <-gameEntity.chanInAction
-		fmt.Println("Received command", incAction)
+		inCmd := <-gameEntity.clientInCmd
+		fmt.Println("Received command", inCmd)
 
-		decoder := json.NewDecoder(strings.NewReader(incAction))
+		decoder := json.NewDecoder(strings.NewReader(inCmd))
 
 		var cmd clientBaseCmd
 		err := decoder.Decode(&cmd)
@@ -106,14 +117,7 @@ func (gameEntity *gameEntity) listen() {
 				log.Println(err)
 				continue
 			}
-
-			gameEntity.chanAttack <- attackInfo{gameEntity.ID, int32(attackCmd.AttackTarget)}
-
+			gameEntity.toGameWorld <- &attackInfo{gameEntity.ID, int32(attackCmd.AttackTarget)}
 		}
 	}
-}
-
-func (gameEntity *gameEntity) dealDamage() {
-	// kill entity directly
-	gameEntity.chanDead <- gameEntity
 }

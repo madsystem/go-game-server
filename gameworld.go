@@ -7,25 +7,20 @@ import (
 	"time"
 )
 
-type attackInfo struct {
-	attackerID int32
-	targetID   int32
-}
-
 type gameWorld struct {
 	gameEntities     []*gameEntity
 	socketHandler    *socketHandler
 	websocketHandler *websocketHandler
 	aiHandler        *aiHandler
 
-	chanAttack chan attackInfo
-	idCounter  int32
+	chanClientCmd chan clientCmd
+	idCounter     int32
 }
 
 func newGameWorld() *gameWorld {
 	newgameWorld := &gameWorld{
-		gameEntities: make([]*gameEntity, 0),
-		chanAttack:   make(chan attackInfo),
+		gameEntities:  make([]*gameEntity, 0),
+		chanClientCmd: make(chan clientCmd),
 	}
 
 	return newgameWorld
@@ -37,12 +32,12 @@ func (gameWorld *gameWorld) fetchNewEntityID() int32 {
 	return newID
 }
 
-func (gameWorld *gameWorld) addGameEntity(gameEntity *gameEntity) {
+func (gameWorld *gameWorld) createGameEntity(client client) int32 {
+	gameEntity := newGameEntity(client, gameWorld.chanClientCmd)
 	gameWorld.gameEntities = append(gameWorld.gameEntities, gameEntity)
 
-	// start entity loop
-	go gameEntity.listen()
 	log.Println("AddGameEntity(): ", gameEntity, "Entity Count: ", len(gameWorld.gameEntities))
+	return gameEntity.ID
 }
 
 func (gameWorld *gameWorld) isAttackable(id int32) bool {
@@ -53,6 +48,16 @@ func (gameWorld *gameWorld) isAttackable(id int32) bool {
 	}
 
 	return false
+}
+
+func (gameWorld *gameWorld) countNonHumanEntities() uint32 {
+	var count uint32
+	for _, gameEntity := range gameWorld.gameEntities {
+		if gameEntity.Type != 0 {
+			count++
+		}
+	}
+	return count
 }
 
 func (gameWorld *gameWorld) removeGameEntity(id int32) {
@@ -74,6 +79,7 @@ func (gameWorld *gameWorld) Start() {
 
 	gameWorld.aiHandler = newAIHandler(gameWorld)
 	gameWorld.aiHandler.start()
+
 	// update clients
 	go gameWorld.update()
 
@@ -84,7 +90,8 @@ func (gameWorld *gameWorld) update() {
 	for {
 		time.Sleep(40 * time.Millisecond) // sleep 40 ms
 
-		gameWorld.updateAttacks()
+		// update game world
+		gameWorld.updateClientCommands()
 		for _, gameEntity := range gameWorld.gameEntities {
 			gameEntity.updateEntity()
 		}
@@ -94,7 +101,11 @@ func (gameWorld *gameWorld) update() {
 		jsonCmd, _ := json.Marshal(worldStateCmd)
 		// update entities
 		for _, gameEntity := range gameWorld.gameEntities {
-			gameEntity.chanOutAction <- string(jsonCmd)
+			select {
+			case gameEntity.clientOutCmd <- string(jsonCmd):
+			default:
+			}
+
 		}
 	}
 }
@@ -108,13 +119,17 @@ func (gameWorld *gameWorld) addScore(id int32) {
 	}
 }
 
-func (gameWorld *gameWorld) updateAttacks() {
+func (gameWorld *gameWorld) updateClientCommands() {
+	// currently client is only send
 	select {
-	case attack := <-gameWorld.chanAttack:
-		if gameWorld.isAttackable(attack.targetID) {
-			// entity got attacked, kill it
-			gameWorld.addScore(attack.attackerID)
-			gameWorld.removeGameEntity(attack.targetID)
+	case clientCmd := <-gameWorld.chanClientCmd:
+		if clientCmd.getCmdType() == "AttackCmd" {
+			attack := clientCmd.(*attackInfo)
+			if gameWorld.isAttackable(attack.targetID) {
+				// entity got attacked, kill it
+				gameWorld.addScore(attack.attackerID)
+				gameWorld.removeGameEntity(attack.targetID)
+			}
 		}
 	default:
 	}
