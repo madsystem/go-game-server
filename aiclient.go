@@ -9,18 +9,20 @@ import (
 
 // aiClient handles
 type aiClient struct {
-	chanInCmd  chan string
-	chanOutCmd chan string
-	targetID   int32
-	targetPos  [2]float32
+	chanInCmd   chan string
+	chanOutCmd  chan string
+	targetID    int32
+	targetPos   [2]float32
+	isAliveFlag bool
 }
 
 func newAIClient() *aiClient {
 	newClient := &aiClient{
-		chanInCmd:  make(chan string),
-		chanOutCmd: make(chan string),
-		targetID:   -1,
-		targetPos:  [2]float32{0, 0},
+		chanInCmd:   make(chan string),
+		chanOutCmd:  make(chan string),
+		targetID:    -1,
+		targetPos:   [2]float32{0, 0},
+		isAliveFlag: true,
 	}
 
 	newClient.open()
@@ -99,6 +101,7 @@ func (client *aiClient) open() {
 }
 
 func (client *aiClient) close() {
+	client.isAliveFlag = false
 
 }
 
@@ -112,4 +115,8 @@ func (client *aiClient) getOutCmdChan() chan string {
 
 func (client *aiClient) getType() int32 {
 	return 1
+}
+
+func (client *aiClient) isAlive() bool {
+	return client.isAliveFlag
 }

@@ -8,14 +8,15 @@ type websocketClient struct {
 	chanOutCmd       chan string
 	chanDisconnected chan *websocketClient
 	conn             *websocket.Conn
+	isAliveFlag      bool
 }
 
 func newWebsocketClient(_conn *websocket.Conn) *websocketClient {
 	client := &websocketClient{
-		chanInCmd:        make(chan string),
-		chanOutCmd:       make(chan string),
-		chanDisconnected: make(chan *websocketClient),
-		conn:             _conn,
+		chanInCmd:   make(chan string),
+		chanOutCmd:  make(chan string),
+		conn:        _conn,
+		isAliveFlag: true,
 	}
 
 	client.listen()
@@ -23,7 +24,7 @@ func newWebsocketClient(_conn *websocket.Conn) *websocketClient {
 }
 
 func (client *websocketClient) read() {
-	defer client.conn.Close()
+	defer client.close()
 	for {
 		mt, msg, error := client.conn.ReadMessage()
 
@@ -31,7 +32,6 @@ func (client *websocketClient) read() {
 
 		if error != nil {
 			fmt.Println(error)
-			client.chanDisconnected <- client
 			break
 		}
 		msgStr := string(msg[:len(msg)])
@@ -40,15 +40,13 @@ func (client *websocketClient) read() {
 }
 
 func (client *websocketClient) write() {
-	defer client.conn.Close()
+	defer client.close()
 	for {
 		jsonString := <-client.chanOutCmd
 		jsonString = jsonString + "\r"
 		error := client.conn.WriteMessage(2, []byte(jsonString)) // use binary message type
 		if error != nil {
 			fmt.Println(error)
-			client.chanDisconnected <- client
-			// todo close + remove client
 			break
 		}
 	}
@@ -69,4 +67,13 @@ func (client *websocketClient) getOutCmdChan() chan string {
 
 func (client *websocketClient) getType() int32 {
 	return 0
+}
+
+func (client *websocketClient) isAlive() bool {
+	return client.isAliveFlag
+}
+
+func (client *websocketClient) close() {
+	client.isAliveFlag = false
+	client.conn.Close()
 }

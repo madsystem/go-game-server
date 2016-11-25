@@ -7,7 +7,7 @@ type aiHandler struct {
 }
 
 var spawnFrequency time.Duration = 10
-var aiCount uint32 = 0
+var aiCount uint32 = 10
 
 func newAIHandler(_gameWorld *gameWorld) *aiHandler {
 	aiHandler := &aiHandler{

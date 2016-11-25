@@ -50,6 +50,17 @@ func (gameWorld *gameWorld) isAttackable(id int32) bool {
 	return false
 }
 
+func (gameWorld *gameWorld) cleanup() {
+	var stillAlive []*gameEntity
+	for _, gameEntity := range gameWorld.gameEntities {
+		if gameEntity.isAlive() {
+			stillAlive = append(stillAlive, gameEntity)
+		}
+	}
+
+	gameWorld.gameEntities = stillAlive
+}
+
 func (gameWorld *gameWorld) countNonHumanEntities() uint32 {
 	var count uint32
 	for _, gameEntity := range gameWorld.gameEntities {
@@ -60,14 +71,13 @@ func (gameWorld *gameWorld) countNonHumanEntities() uint32 {
 	return count
 }
 
-func (gameWorld *gameWorld) removeGameEntity(id int32) {
-	log.Println("RemoveGameEntity: ", id)
+func (gameWorld *gameWorld) findEntityByID(id int32) (int32, *gameEntity) {
 	for i, gameEntity := range gameWorld.gameEntities {
 		if gameEntity.ID == id {
-			gameWorld.gameEntities = append(gameWorld.gameEntities[:i], gameWorld.gameEntities[i+1:]...)
-			break
+			return int32(i), gameEntity
 		}
 	}
+	return -1, nil
 }
 
 func (gameWorld *gameWorld) Start() {
@@ -89,6 +99,7 @@ func (gameWorld *gameWorld) Start() {
 func (gameWorld *gameWorld) update() {
 	for {
 		time.Sleep(40 * time.Millisecond) // sleep 40 ms
+		gameWorld.cleanup()
 
 		// update game world
 		gameWorld.updateClientCommands()
@@ -128,7 +139,8 @@ func (gameWorld *gameWorld) updateClientCommands() {
 			if gameWorld.isAttackable(attack.targetID) {
 				// entity got attacked, kill it
 				gameWorld.addScore(attack.attackerID)
-				gameWorld.removeGameEntity(attack.targetID)
+				_, gameEntity := gameWorld.findEntityByID(attack.targetID)
+				gameEntity.kill()
 			}
 		}
 	default:

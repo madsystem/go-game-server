@@ -9,10 +9,10 @@ import (
 type socketClient struct {
 	chanInCmd   chan string
 	chanOutCmd  chan string
-	chanDispose chan bool
 	reader      *bufio.Reader
 	writer      *bufio.Writer
 	conn        net.Conn
+	isAliveFlag bool
 }
 
 func (client *socketClient) read() {
@@ -56,9 +56,10 @@ func newSocketClient(_connection net.Conn) *socketClient {
 		chanInCmd:  make(chan string),
 		chanOutCmd: make(chan string),
 		//chanDispose: make(chan bool),
-		reader: reader,
-		writer: writer,
-		conn:   _connection,
+		reader:      reader,
+		writer:      writer,
+		conn:        _connection,
+		isAliveFlag: true,
 	}
 
 	client.open()
@@ -78,5 +79,10 @@ func (client *socketClient) getType() int32 {
 }
 
 func (client *socketClient) close() {
+	client.isAliveFlag = false
 	client.conn.Close()
+}
+
+func (client *socketClient) isAlive() bool {
+	return client.isAliveFlag
 }

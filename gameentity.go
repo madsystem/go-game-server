@@ -31,6 +31,8 @@ type gameEntity struct {
 	clientOutCmd chan string
 	clientDone   chan bool
 	toGameWorld  chan clientCmd
+
+	isAliveFlag bool
 }
 
 func newGameEntity(client client, toGameWorldChan chan clientCmd) *gameEntity {
@@ -63,6 +65,7 @@ func newGameEntity(client client, toGameWorldChan chan clientCmd) *gameEntity {
 		toGameWorld:  toGameWorldChan,
 		Velocity:     velocity,
 		Score:        0,
+		isAliveFlag:  true,
 	}
 
 	idCounter++
@@ -120,4 +123,12 @@ func (gameEntity *gameEntity) listen() {
 			gameEntity.toGameWorld <- &attackInfo{gameEntity.ID, int32(attackCmd.AttackTarget)}
 		}
 	}
+}
+
+func (gameEntity *gameEntity) isAlive() bool {
+	return gameEntity.isAliveFlag && gameEntity.client.isAlive()
+}
+
+func (gameEntity *gameEntity) kill() {
+	gameEntity.isAliveFlag = false
 }
