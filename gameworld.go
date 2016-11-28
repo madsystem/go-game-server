@@ -13,31 +13,80 @@ type gameWorld struct {
 	websocketHandler *websocketHandler
 	aiHandler        *aiHandler
 
-	chanClientCmd chan clientCmd
-	idCounter     int32
+	createGameEntity chan createGameEntityMsg
+	updateWorld      chan bool
+	chanClientCmd    chan clientCmd
+	idCounter        int32
 }
 
 func newGameWorld() *gameWorld {
 	newgameWorld := &gameWorld{
-		gameEntities:  make([]*gameEntity, 0),
-		chanClientCmd: make(chan clientCmd),
+		gameEntities:     make([]*gameEntity, 0),
+		chanClientCmd:    make(chan clientCmd),
+		createGameEntity: make(chan createGameEntityMsg),
+		updateWorld:      make(chan bool),
 	}
 
 	return newgameWorld
 }
 
-func (gameWorld *gameWorld) fetchNewEntityID() int32 {
-	newID := gameWorld.idCounter
-	gameWorld.idCounter++
-	return newID
+type createGameEntityMsg struct {
+	responseID chan int32
+	client     client
 }
 
-func (gameWorld *gameWorld) createGameEntity(client client) int32 {
-	gameEntity := newGameEntity(client, gameWorld.chanClientCmd)
-	gameWorld.gameEntities = append(gameWorld.gameEntities, gameEntity)
+func newCreateGameEntityMsg(client client) *createGameEntityMsg {
+	newCreateGameEntityMsg := &createGameEntityMsg{
+		responseID: make(chan int32),
+		client:     client,
+	}
 
-	log.Println("AddGameEntity(): ", gameEntity, "Entity Count: ", len(gameWorld.gameEntities))
-	return gameEntity.ID
+	return newCreateGameEntityMsg
+}
+
+func (gameWorld *gameWorld) handleWorld() {
+	for {
+		select {
+		case createGameEntityMsg := <-gameWorld.createGameEntity:
+			gameEntity := newGameEntity(createGameEntityMsg.client, gameWorld.chanClientCmd)
+			gameWorld.gameEntities = append(gameWorld.gameEntities, gameEntity)
+			createGameEntityMsg.responseID <- gameEntity.ID
+			log.Println("AddGameEntity(): ", gameEntity, "Entity Count: ", len(gameWorld.gameEntities))
+		case clientCmd := <-gameWorld.chanClientCmd:
+			if clientCmd.getCmdType() == "AttackCmd" {
+				attack := clientCmd.(*attackInfo)
+				if gameWorld.isAttackable(attack.targetID) {
+					// entity got attacked, kill it
+					gameWorld.addScore(attack.attackerID)
+					_, gameEntity := gameWorld.findEntityByID(attack.targetID)
+					gameEntity.kill()
+				}
+			}
+		case <-time.After(40 * time.Millisecond):
+			//	cleanup
+			var stillAlive []*gameEntity
+			for _, gameEntity := range gameWorld.gameEntities {
+				if gameEntity.isAlive() {
+					stillAlive = append(stillAlive, gameEntity)
+				}
+			}
+			gameWorld.gameEntities = stillAlive
+
+			// send state to game entities and its connected client
+			for _, gameEntity := range gameWorld.gameEntities {
+				gameEntity.updateEntity()
+			}
+
+			worldStateCmd := newWorldStateCmd(gameWorld.gameEntities)
+			jsonCmd, _ := json.Marshal(worldStateCmd)
+			for _, gameEntity := range gameWorld.gameEntities {
+				select {
+				case gameEntity.clientOutCmd <- string(jsonCmd):
+				default:
+				}
+			}
+		}
+	}
 }
 
 func (gameWorld *gameWorld) isAttackable(id int32) bool {
@@ -48,17 +97,6 @@ func (gameWorld *gameWorld) isAttackable(id int32) bool {
 	}
 
 	return false
-}
-
-func (gameWorld *gameWorld) cleanup() {
-	var stillAlive []*gameEntity
-	for _, gameEntity := range gameWorld.gameEntities {
-		if gameEntity.isAlive() {
-			stillAlive = append(stillAlive, gameEntity)
-		}
-	}
-
-	gameWorld.gameEntities = stillAlive
 }
 
 func (gameWorld *gameWorld) countNonHumanEntities() uint32 {
@@ -91,34 +129,9 @@ func (gameWorld *gameWorld) Start() {
 	gameWorld.aiHandler.start()
 
 	// update clients
-	go gameWorld.update()
+	go gameWorld.handleWorld()
 
 	fmt.Println("Server started ...")
-}
-
-func (gameWorld *gameWorld) update() {
-	for {
-		time.Sleep(40 * time.Millisecond) // sleep 40 ms
-		gameWorld.cleanup()
-
-		// update game world
-		gameWorld.updateClientCommands()
-		for _, gameEntity := range gameWorld.gameEntities {
-			gameEntity.updateEntity()
-		}
-
-		// send update to clients
-		worldStateCmd := newWorldStateCmd(gameWorld.gameEntities)
-		jsonCmd, _ := json.Marshal(worldStateCmd)
-		// update entities
-		for _, gameEntity := range gameWorld.gameEntities {
-			select {
-			case gameEntity.clientOutCmd <- string(jsonCmd):
-			default:
-			}
-
-		}
-	}
 }
 
 func (gameWorld *gameWorld) addScore(id int32) {
@@ -127,22 +140,5 @@ func (gameWorld *gameWorld) addScore(id int32) {
 			gameEntity.Score++
 			break
 		}
-	}
-}
-
-func (gameWorld *gameWorld) updateClientCommands() {
-	// currently client is only send
-	select {
-	case clientCmd := <-gameWorld.chanClientCmd:
-		if clientCmd.getCmdType() == "AttackCmd" {
-			attack := clientCmd.(*attackInfo)
-			if gameWorld.isAttackable(attack.targetID) {
-				// entity got attacked, kill it
-				gameWorld.addScore(attack.attackerID)
-				_, gameEntity := gameWorld.findEntityByID(attack.targetID)
-				gameEntity.kill()
-			}
-		}
-	default:
 	}
 }

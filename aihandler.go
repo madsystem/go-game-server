@@ -24,7 +24,9 @@ func (handler *aiHandler) start() {
 func (handler *aiHandler) spawn() {
 	for {
 		if handler.gameWorld.countNonHumanEntities() < aiCount {
-			handler.gameWorld.createGameEntity(newAIClient())
+			createGameEntityMsg := newCreateGameEntityMsg(newAIClient())
+			handler.gameWorld.createGameEntity <- *createGameEntityMsg
+			<-createGameEntityMsg.responseID
 		}
 		time.Sleep(spawnFrequency * time.Second)
 	}

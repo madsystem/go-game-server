@@ -16,7 +16,9 @@ func (handler *socketHandler) join(connection net.Conn) {
 	fmt.Println("Recv connection", connection)
 
 	client := newSocketClient(connection)
-	id := handler.gameWorld.createGameEntity(client)
+	createGameEntityMsg := newCreateGameEntityMsg(client)
+	handler.gameWorld.createGameEntity <- *createGameEntityMsg
+	id := <-createGameEntityMsg.responseID
 	handler.sendHandshake(client, id)
 }
 

@@ -29,7 +29,9 @@ func (handler *websocketHandler) join(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := newWebsocketClient(conn)
-	id := handler.gameWorld.createGameEntity(client)
+	createGameEntityMsg := newCreateGameEntityMsg(client)
+	handler.gameWorld.createGameEntity <- *createGameEntityMsg
+	id := <-createGameEntityMsg.responseID
 	handler.sendHandshake(client, id)
 }
 
